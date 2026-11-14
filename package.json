@@ -1,0 +1,10 @@
+{
+  "name": "carbowl",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Hands-free quizbowl practice for the car: reads QBReader tossups and bonuses aloud and listens for spoken buzzes and answers.",
+  "scripts": {
+    "test": "node --test test/"
+  }
+}

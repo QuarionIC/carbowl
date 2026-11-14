@@ -1,0 +1,118 @@
+{
+ "generated": "2026-11-14",
+ "bundles": {
+  "runtime": {
+   "files": [
+    {
+     "path": "vendor/sherpa/sherpa-onnx-wasm-web.wasm",
+     "size": 15203590
+    }
+   ],
+   "bytes": 15203590
+  },
+  "vad": {
+   "files": [
+    {
+     "path": "models/vad/silero_vad.onnx",
+     "size": 643854,
+     "sha256": "9e2449e1087496d8"
+    }
+   ],
+   "bytes": 643854
+  },
+  "asr-moonshine-tiny": {
+   "files": [
+    {
+     "path": "models/asr-moonshine-tiny/encoder_model.ort",
+     "size": 13281600,
+     "sha256": "94e90a4654fc45cd"
+    },
+    {
+     "path": "models/asr-moonshine-tiny/decoder_model_merged.ort",
+     "size": 30412256,
+     "sha256": "cf524c4862d36e9e"
+    },
+    {
+     "path": "models/asr-moonshine-tiny/tokens.txt",
+     "size": 549350,
+     "sha256": "2870d843e14c1e18"
+    }
+   ],
+   "bytes": 44243206
+  },
+  "asr-moonshine-base": {
+   "files": [
+    {
+     "path": "models/asr-moonshine-base/encoder_model.ort",
+     "size": 31326816,
+     "sha256": "7c66495948d0d08e"
+    },
+    {
+     "path": "models/asr-moonshine-base/decoder_model_merged.ort",
+     "size": 109424400,
+     "parts": [
+      {
+       "path": "models/asr-moonshine-base/decoder_model_merged.ort.part0",
+       "size": 47185920
+      },
+      {
+       "path": "models/asr-moonshine-base/decoder_model_merged.ort.part1",
+       "size": 47185920
+      },
+      {
+       "path": "models/asr-moonshine-base/decoder_model_merged.ort.part2",
+       "size": 15052560
+      }
+     ],
+     "sha256": "d9d7b333af34bc55"
+    },
+    {
+     "path": "models/asr-moonshine-base/tokens.txt",
+     "size": 549350,
+     "sha256": "2870d843e14c1e18"
+    }
+   ],
+   "bytes": 141300566
+  },
+  "tts-supertonic": {
+   "files": [
+    {
+     "path": "models/tts-supertonic/duration_predictor.int8.onnx",
+     "size": 1521526,
+     "sha256": "6d556b3691165c36"
+    },
+    {
+     "path": "models/tts-supertonic/text_encoder.int8.onnx",
+     "size": 27431318,
+     "sha256": "dd5f535ed629f7df"
+    },
+    {
+     "path": "models/tts-supertonic/vector_estimator.int8.onnx",
+     "size": 40686657,
+     "sha256": "9cce89801068dc99"
+    },
+    {
+     "path": "models/tts-supertonic/vocoder.int8.onnx",
+     "size": 25977132,
+     "sha256": "db99c36fb871fbfb"
+    },
+    {
+     "path": "models/tts-supertonic/tts.json",
+     "size": 8699,
+     "sha256": "ee531d9af9b80438"
+    },
+    {
+     "path": "models/tts-supertonic/unicode_indexer.bin",
+     "size": 262144,
+     "sha256": "06557ec23778a2c6"
+    },
+    {
+     "path": "models/tts-supertonic/voice.bin",
+     "size": 517168,
+     "sha256": "12e0919ffc641ff2"
+    }
+   ],
+   "bytes": 96404644
+  }
+ }
+}

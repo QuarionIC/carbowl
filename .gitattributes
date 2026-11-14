@@ -1,0 +1,8 @@
+# Model and runtime files must be stored byte-for-byte: the app checks their sizes against
+# docs/models/manifest.json, so no line-ending conversion anywhere under these folders.
+docs/models/** -text
+docs/vendor/** -text
+*.wasm binary
+*.onnx binary
+*.ort binary
+*.bin binary

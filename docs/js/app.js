@@ -736,6 +736,51 @@ if (TEST) {
     R.done = true;
     return R;
   };
+
+  // Exercises the real microphone path without a microphone: a synthetic voice clip is played into
+  // the capture worklet (in place of the mic stream), which resamples it and feeds the listening
+  // worker exactly as live audio would be. Also checks the worklet's frame rate and timestamps.
+  window.carbowlLoopbackTest = async function (text = 'Buzz.', sid = 2) {
+    const R = { done: false }; window.carbowlLoopbackResult = R;
+    try {
+      await audio.start({ mic: false });
+      const ctx = audio.ctx;
+      await ctx.audioWorklet.addModule(new URL('./workers/capture-worklet.js', import.meta.url).href).catch(() => {});
+      const node = new AudioWorkletNode(ctx, 'carbowl-capture', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1], channelCount: 1, channelCountMode: 'explicit' });
+      const mute = ctx.createGain(); mute.gain.value = 0; node.connect(mute); mute.connect(ctx.destination);
+      // Stage 1: frames to the main thread, to measure rate, timing and a 1 kHz tone's level.
+      const frames = []; node.port.onmessage = e => frames.push({ n: e.data.samples.length, t: e.data.t, rms: Math.sqrt(e.data.samples.reduce((s, v) => s + v * v, 0) / e.data.samples.length), at: ctx.currentTime });
+      const osc = ctx.createOscillator(); osc.frequency.value = 1000; const og = ctx.createGain(); og.gain.value = 0.5; osc.connect(og); og.connect(node);
+      const tStart = ctx.currentTime; osc.start();
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      osc.stop(); osc.disconnect();
+      const span = frames.length > 1 ? frames[frames.length - 1].t - frames[0].t : 0;
+      R.contextRate = ctx.sampleRate; R.frames = frames.length; R.frameSize = frames[0] && frames[0].n;
+      R.samplesPerSecond = span ? Math.round((frames.length - 1) * 640 / span) : 0;
+      R.toneRms = +(frames.slice(5, -2).reduce((s, f) => s + f.rms, 0) / Math.max(1, frames.length - 7)).toFixed(4); // 0.5 amplitude sine -> 0.3536
+      R.stampLagMs = Math.round(1000 * frames.slice(5).reduce((s, f) => s + (f.at - f.t), 0) / Math.max(1, frames.length - 5));
+      R.monotonic = frames.every((f, i) => i === 0 || f.t > frames[i - 1].t);
+      R.firstFrameAfterMs = frames[0] ? Math.round(1000 * (frames[0].t - tStart)) : null;
+      // Stage 2: speech through the worklet into the listening worker.
+      node.port.onmessage = null;
+      const sinkPort = listener.createAudioPort(); node.port.postMessage({ port: sinkPort }, [sinkPort]);
+      const clip = await tts.speak(text, { sid, speed: 1, steps: 5, priority: 0 }).promise;
+      const heard = []; const onU = e => heard.push(e.detail); listener.addEventListener('utterance', onU);
+      listener.setMode('spot');
+      await new Promise(resolve => setTimeout(resolve, 600));
+      const buf = ctx.createBuffer(1, clip.samples.length, clip.sampleRate); buf.getChannelData(0).set(clip.samples);
+      const src = ctx.createBufferSource(); src.buffer = buf; const sg = ctx.createGain(); sg.gain.value = 0.5; src.connect(sg); sg.connect(node);
+      const playedAt = ctx.currentTime + 0.05; src.start(playedAt);
+      const tEnd = performance.now() + 8000;
+      while (performance.now() < tEnd && !heard.length) await new Promise(resolve => setTimeout(resolve, 50));
+      listener.setMode('off'); listener.removeEventListener('utterance', onU);
+      if (heard.length) { const u = heard[0]; R.heard = u.text; R.utteranceStartsAfterClipStartMs = Math.round(1000 * (u.start - playedAt)); R.utteranceDur = +u.dur.toFixed(2); R.clipDur = +(clip.samples.length / clip.sampleRate).toFixed(2); R.level = +u.level.toFixed(3); R.asrMs = u.asrMs; } else R.heard = null;
+      node.disconnect();
+      R.ok = R.samplesPerSecond > 15900 && R.samplesPerSecond < 16100 && Math.abs(R.toneRms - 0.3536) < 0.02 && R.monotonic && !!R.heard && /buzz/i.test(R.heard);
+    } catch (e) { R.error = String(e && e.stack || e); }
+    R.done = true;
+    return R;
+  };
 }
 
 boot();

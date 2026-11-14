@@ -11,6 +11,7 @@ const TARGET = 16000;
 const FRAME = 640;
 const HALF = 12;    // sinc half-width, in zero crossings
 const PHASES = 64;  // sub-sample positions kept in the filter table
+const SILENCE = new Float32Array(128);
 
 class CaptureProcessor extends AudioWorkletProcessor {
   constructor () {
@@ -48,8 +49,10 @@ class CaptureProcessor extends AudioWorkletProcessor {
 
   process (inputs) {
     const input = inputs[0];
-    if (!input || !input.length || !input[0]) return true;
-    const ch0 = input[0]; const ch1 = input.length > 1 ? input[1] : null;
+    // With nothing connected (or a muted track) the browser passes no channels: treat that as
+    // silence so that time keeps moving for the listener and end-of-speech is still detected.
+    const ch0 = input && input.length && input[0] ? input[0] : SILENCE;
+    const ch1 = input && input.length > 1 ? input[1] : null;
     const n = ch0.length; const size = this.size; const hist = this.hist; const mask = size - 1;
     for (let i = 0; i < n; i++) hist[(this.inCount + i) & mask] = ch1 ? 0.5 * (ch0[i] + ch1[i]) : ch0[i];
     this.inCount += n;

@@ -7,7 +7,8 @@
 'use strict';
 const SHELL = 'carbowl-shell-v1';
 const MODELS = 'carbowl-models-v1';
-const BIG = /\/models\/|\.(wasm|data|ort|onnx|bin)(\.part\d+)?$/;
+// Model files live in the model cache; the list of them (manifest.json) is part of the app shell.
+const BIG = /\/models\/(?!manifest\.json$)|\.(wasm|data|ort|onnx|bin)(\.part\d+)?$/;
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', e => e.waitUntil((async () => {

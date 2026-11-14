@@ -41,9 +41,9 @@ export class AudioEngine extends EventTarget {
 
   /** Must be called from a tap or click: browsers only start audio and open the mic on a user gesture. */
   async start ({ mic = true, constraints = {}, workletUrl } = {}) {
+    // iOS: say up front that we both play and record, so the route does not flip when the mic opens.
+    try { if (navigator.audioSession && (mic || !this.ctx)) navigator.audioSession.type = mic ? 'play-and-record' : 'playback'; } catch (e) { this.log('audioSession type not set: ' + e.message); }
     if (!this.ctx) {
-      // iOS: say up front that we both play and record, so the route does not flip when the mic opens.
-      try { if (navigator.audioSession) navigator.audioSession.type = mic ? 'play-and-record' : 'playback'; } catch (e) { this.log('audioSession type not set: ' + e.message); }
       const Ctx = window.AudioContext || window.webkitAudioContext;
       this.ctx = new Ctx({ latencyHint: 'interactive' });
       this.master = this.ctx.createGain();
@@ -56,7 +56,11 @@ export class AudioEngine extends EventTarget {
       this._keepAlive();
     }
     if (this.ctx.state !== 'running') { try { await this.ctx.resume(); } catch (e) { this.log('resume failed: ' + e.message); } }
-    if (mic && !this.stream) await this.openMic({ constraints, workletUrl });
+    if (mic && !this.stream) {
+      await this.openMic({ constraints, workletUrl });
+      // The permission prompt (and the switch to a recording route on iOS) can leave the context suspended.
+      if (this.ctx.state !== 'running') { try { await this.ctx.resume(); } catch (e) { this.log('resume after opening the microphone failed: ' + e.message); } }
+    }
     this.started = true;
   }
 
@@ -65,7 +69,7 @@ export class AudioEngine extends EventTarget {
     const n = this.ctx.sampleRate * 2;
     const buf = this.ctx.createBuffer(1, n, this.ctx.sampleRate);
     const d = buf.getChannelData(0);
-    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * 0.0004;
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * 0.00015;
     const src = this.ctx.createBufferSource();
     src.buffer = buf; src.loop = true;
     src.connect(this.ctx.destination);

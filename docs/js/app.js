@@ -24,12 +24,12 @@ const LS = {
   del (k) { try { localStorage.removeItem('cb.' + k); } catch (e) { /* ignore */ } }
 };
 
-// Reading speed is a multiple of the voice's natural pace. The first version shipped at 1.1; the
-// default is now one and a half times that.
-const SPEED = { min: 0.8, max: 2.5, step: 0.05, nudge: 0.15, first: 1.1, standard: 1.65, calm: 1.35 };
+// Reading speed is a multiple of the voice's natural pace. Earlier versions defaulted to 1.1 and
+// then 1.65; the default is now 1.3.
+const SPEED = { min: 0.8, max: 2, step: 0.05, nudge: 0.1, earlier: [1.1, 1.65], standard: 1.3, calm: 1.35 };
 const clampSpeed = v => Math.min(SPEED.max, Math.max(SPEED.min, Math.round((Number(v) || SPEED.standard) / SPEED.step) * SPEED.step));
 const DEFAULTS = {
-  settingsVersion: 2,
+  settingsVersion: 3,
   filters: defaultFilters(),
   rules: { ...DEFAULT_RULES },
   voice: 'supertonic', sid: 5, speed: SPEED.standard, calmAnswers: true, steps: 5, volume: 1,
@@ -40,9 +40,9 @@ const DEFAULTS = {
 function loadSettings () {
   const s = LS.get('settings', {}) || {};
   const out = { ...DEFAULTS, ...s, rules: { ...DEFAULTS.rules, ...(s.rules || {}) }, filters: sanitizeFilters(s.filters) };
-  // Settings saved by the first version carry its default speed; move those to the new default once.
-  // A speed the listener chose for themselves is left alone.
-  if ((s.settingsVersion || 1) < 2 && (s.speed === undefined || Math.abs(s.speed - SPEED.first) < 0.001)) out.speed = SPEED.standard;
+  // Settings saved by an earlier version carry that version's default speed; move those to the
+  // current default once. A speed the listener chose for themselves is left alone.
+  if ((s.settingsVersion || 1) < DEFAULTS.settingsVersion && (s.speed === undefined || SPEED.earlier.some(v => Math.abs(s.speed - v) < 0.001))) out.speed = SPEED.standard;
   out.settingsVersion = DEFAULTS.settingsVersion;
   out.speed = +clampSpeed(out.speed).toFixed(2);
   if (!VOICES[out.voice]) out.voice = DEFAULTS.voice;

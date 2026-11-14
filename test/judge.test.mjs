@@ -154,3 +154,21 @@ test('speed commands need two words', () => {
   for (const s of ['faster', 'slower', 'Faster than light', 'the faster horse', 'slowly']) assert.equal(classifyCommand(s, all), null, s);
   assert.equal(classifyCommand('read faster', ['pause', 'skip']), null, 'only where allowed');
 });
+
+test('command words written by ear are still understood', () => {
+  const all = ['pause', 'skip', 'faster', 'slower', 'right', 'wrong', 'repeat', 'resume'];
+  assert.equal(classifyCommand('Raid faster.', all), 'faster');
+  assert.equal(classifyCommand('Reed slower', all), 'slower');
+  assert.equal(classifyCommand('Paws quiz.', all), 'pause');
+  assert.equal(classifyCommand('I was write.', all), 'right');
+  assert.equal(classifyCommand('Slough down', all), 'slower');
+  assert.equal(classifyCommand('Immanuel Kant', all), null);
+  assert.equal(classifyCommand('The Wright brothers', all), null);
+  assert.equal(classifyCommand('Bertrand Russell', all), null);
+});
+
+test('command leads: first halves of two-word commands, never a buzz word', async () => {
+  const { isCommandLead } = await import('../docs/js/intent.js');
+  for (const s of ['Read.', 'Raid.', 'Pause.', 'Slow', 'Speed.', 'Hold', 'Wait.', 'Stop.']) assert.ok(isCommandLead(s), s);
+  for (const s of ['Buzz.', 'Bus.', 'Boss', 'Kant.', 'Skip.', 'Next.', 'Read faster.', 'This.', '']) assert.ok(!isCommandLead(s), s);
+});

@@ -306,3 +306,29 @@ test('"read faster" is passed to the app and the question carries on', async () 
   assert.deepEqual(asked, ['faster', 'slower']);
   assert.equal(w.game.history[0].result, 'power', 'the speed requests neither buzzed nor ended the question');
 });
+
+test('a pause inside a two-word command does not turn its first word into a buzz', async () => {
+  const asked = [];
+  const w = makeWorld({ questions: [KANT], rules: { commandHoldSec: 0.08 }, onMode: chain(onceMode('spot', w => { w.hear('Raid.', { dur: 0.4 }); setTimeout(() => w.hear('Faster.', { dur: 0.5 }), 25); setTimeout(() => w.hear('Buzz.'), 70); }), onceMode('answer', w => w.hear('Kant'))) });
+  w.game.ui.onCommand = c => asked.push(c);
+  await w.run();
+  assert.deepEqual(asked, ['faster']);
+  assert.equal(w.game.history[0].result, 'power');
+  assert.ok(!w.logs.some(l => /short blurt/.test(l)), 'the lone first word was not treated as a buzz');
+});
+
+test('"pause ... quiz" in two halves pauses; a lone "pause" still counts as a short-word buzz', async () => {
+  const a = makeWorld({ questions: [KANT], rules: { commandHoldSec: 0.08 }, onMode: onceMode('spot', w => { w.hear('Pause.', { dur: 0.4 }); setTimeout(() => w.hear('Quiz.', { dur: 0.4 }), 20); setTimeout(() => w.game.act('resume'), 90); }) });
+  await a.run();
+  assert.ok(a.spoken.includes(PHRASES.paused)); assert.equal(a.game.history[0].result, 'dead');
+  const b = makeWorld({ questions: [KANT], rules: { commandHoldSec: 0.05 }, onMode: chain(onceMode('spot', w => w.hear('Pause.', { dur: 0.4 })), onceMode('answer', w => w.hear('Kant'))) });
+  await b.run();
+  assert.equal(b.game.history[0].result, 'power');
+  assert.ok(b.logs.some(l => /short blurt/.test(l)));
+});
+
+test('a held first word followed by something else: both are handled, in order', async () => {
+  const w = makeWorld({ questions: [KANT], rules: { commandHoldSec: 0.08 }, onMode: chain(onceMode('spot', w => { w.hear('Read.', { dur: 0.4 }); setTimeout(() => w.hear('Immanuel Kant is the answer here.', { dur: 2.4 }), 20); }), onceMode('answer', w => w.hear('Kant'))) });
+  await w.run();
+  assert.equal(w.game.history[0].result, 'power', 'the lone word became the buzz; the long sentence was not a command');
+});

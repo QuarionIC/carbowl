@@ -3,7 +3,7 @@
 // in, so the same logic runs in the browser and under test with stand-ins.
 
 import { prepareTossup, prepareBonus, mainAnswer, chunkForSpeech } from './speechtext.js';
-import { classifyBuzz, classifyCommand, isEcho, isFillerOnly } from './intent.js';
+import { classifyBuzz, classifyCommand, isCommandLead, isEcho, isFillerOnly, ALL_COMMANDS } from './intent.js';
 import { isGiveUp } from './judge.js';
 
 export class StopSignal extends Error { constructor () { super('stopped'); this.name = 'StopSignal'; } }
@@ -48,6 +48,7 @@ export const DEFAULT_RULES = {
   announceType: true,           // say "Next tossup" / "Bonus question"
   readRestAfterBuzz: false,     // finish reading the question after a wrong buzz
   sayAnswerWhenCorrect: true,   // confirm the full answer after a correct response
+  commandHoldSec: 0.9,          // how long to wait for the second half of a two-word command
   selfJudge: false,             // no microphone: the answer is revealed and the player taps right or wrong
   selfJudgeSec: 12,
   bonusPointsSpoken: true
@@ -66,6 +67,8 @@ class Mailbox {
       }
     });
   }
+  /** Puts events back at the head of the queue, in the order given. */
+  unshift (...events) { this.q.unshift(...events); }
   /** Drops queued speech events; keeps taps and control events. */
   dropSpeech () { this.q = this.q.filter(e => e.type !== 'utterance' && e.type !== 'speechstart' && e.type !== 'speechend'); }
 }
@@ -157,11 +160,16 @@ export class Game {
   async _next (deadline, { allowSkip = true, onPause, onResume } = {}) {
     for (;;) {
       if (this.stopping) throw new StopSignal();
-      const e = await this.box.next(deadline == null ? undefined : deadline.at - now());
+      let e = await this.box.next(deadline == null ? undefined : deadline.at - now());
       if (e.type === 'stop' || this.stopping) throw new StopSignal();
+      if (e.type === 'utterance' && !e.joined && this._mode === 'spot') e = await this._joinCommand(e);
       let command = null;
       if (e.type === 'tap') command = e.action;
-      else if (e.type === 'utterance') command = classifyCommand(e.text, ['pause', 'skip', 'faster', 'slower']);
+      else if (e.type === 'utterance') {
+        command = classifyCommand(e.text, ['pause', 'skip', 'faster', 'slower']);
+        // Everything heard goes in the log, whatever the game then makes of it.
+        this.log(`heard (${this.state}): "${String(e.text || '').trim()}" ${this._timing(e)}`);
+      }
       if (command === 'faster' || command === 'slower') {
         // Reading speed belongs to the app's settings; the game only passes the request on and keeps going.
         this.log('heard a speed request: ' + command);
@@ -179,6 +187,36 @@ export class Game {
       if (command === 'skip' && allowSkip) throw new SkipSignal();
       return e;
     }
+  }
+
+  /**
+   * While listening for single words, a short pause inside a two-word command ("read ... faster",
+   * "pause ... quiz") arrives as two utterances. When an utterance is just the first word of such a
+   * command, wait a moment for the second half and judge the two together; otherwise the first word
+   * alone would be mistaken for a buzz.
+   * @returns {Promise<object>} the utterance to handle now (possibly the two joined), marked joined
+   */
+  async _joinCommand (first) {
+    if (!isCommandLead(first.text)) return first;
+    const until = now() + this.rules().commandHoldSec * 1000;
+    const aside = [];
+    let second = null;
+    for (;;) {
+      const x = await this.box.next(Math.max(0, until - now()));
+      if (x.type === 'timeout') break;
+      if (x.type === 'stop') { this.box.unshift(x); break; }
+      if (x.type === 'utterance') { second = x; break; }
+      aside.push(x); // speech starting, a reading finishing, a tap: handled afterwards, in order
+    }
+    if (second) {
+      const text = `${first.text} ${second.text}`;
+      if (classifyCommand(text, ALL_COMMANDS)) {
+        this.box.unshift(...aside);
+        return { ...first, text, end: second.end, dur: (second.end || 0) - (first.start || 0), joined: true };
+      }
+      this.box.unshift(...aside, { ...second, joined: true });
+    } else this.box.unshift(...aside);
+    return { ...first, joined: true };
   }
 
   async _pause () {
@@ -264,7 +302,6 @@ export class Game {
       if (e.type !== 'utterance') continue;
       speaking = false;
       const text = String(e.text || '').trim();
-      this.log(`heard (answer): "${text}" ${this._timing(e)}`);
       if (!text || (isFillerOnly(text) && !parts.length)) {
         // "um" - keep listening, with a little extra time.
         soft = { at: Math.min(hard.at, Math.max(soft.at, now() + 3000)) };
@@ -346,7 +383,6 @@ export class Game {
         } else if (e.type === 'utterance') {
           const text = String(e.text || '').trim();
           const spoken = reading.textBetween(e.start - 0.6, e.end + 0.3, prep.text);
-          this.log(`heard (reading): "${text}" ${this._timing(e)}`);
           if (!text) continue;
           if (classifyCommand(text, ['repeat'])) { restart = true; continue; }
           if (reading.state === 'reading' && isEcho(text, spoken)) { this.log('ignored: that was the reader\'s own voice'); continue; }
@@ -483,7 +519,6 @@ export class Game {
             speaking = false;
             const text = String(e.text || '').trim();
             const spoken = reading.textBetween(e.start - 0.6, e.end + 0.3, part.text);
-            this.log(`heard (bonus part ${i + 1}): "${text}" ${this._timing(e)}`);
             const echo = text && !interrupted && reading.state === 'reading' && isEcho(text, spoken);
             const b = text ? classifyBuzz({ text, dur: e.dur }, 'strict') : { buzz: false, rest: '' };
             if (!text || echo || isFillerOnly(text) || (!direct && !b.buzz)) {
@@ -537,7 +572,7 @@ export class Game {
       if (e.type === 'timeout') break;
       let cmd = null;
       if (e.type === 'tap') cmd = e.action;
-      else if (e.type === 'utterance') { cmd = classifyCommand(e.text, ['right', 'wrong', 'repeat', 'skip']); if (e.text) this.log(`heard (between): "${e.text}"` + (cmd ? ` -> ${cmd}` : '')); }
+      else if (e.type === 'utterance') { cmd = classifyCommand(e.text, ['right', 'wrong', 'repeat', 'skip']); if (cmd) this.log('command: ' + cmd); }
       if (cmd === 'next' || cmd === 'skip') break;
       if (cmd === 'right' || cmd === 'wrong') {
         if (this.override(rec, cmd === 'right')) await this._say(cmd === 'right' ? PHRASES.markedRight : PHRASES.markedWrong);

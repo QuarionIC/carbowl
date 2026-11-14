@@ -2,7 +2,7 @@
 // an answer, or nothing (noise, or the app hearing its own voice).
 
 import { wordsOf } from './speechtext.js';
-import { soundKeys } from './phonetics.js';
+import { soundKeys, soundSimilarity, stringSimilarity } from './phonetics.js';
 
 const BUZZ_WORDS = new Set(['buzz', 'buzzed', 'buzzes', 'buzzs', 'buzzing', 'buzzer', 'buz', 'buzzz', 'bus', 'buss', 'buses', 'boss', 'bzz', 'bzzt', 'fuzz', 'buzzy', 'busz', 'buzzin']);
 
@@ -52,16 +52,71 @@ const COMMANDS = [
   { name: 'slower', re: /^(?:(?:read|go|talk|speak) (?:a (?:bit|little) )?slower|slow (?:it )?down|(?:a (?:bit|little)|much) slower)$/ }
 ];
 
+export const ALL_COMMANDS = COMMANDS.map(c => c.name);
+
+// Command words of four letters or more. A recogniser often writes one of these by ear ("raid
+// faster", "paws quiz", "I was write"), so heard words are snapped to the command word they sound like.
+const COMMAND_WORDS = ['read', 'talk', 'speak', 'faster', 'slower', 'speed', 'slow', 'down', 'pause', 'quiz', 'game', 'reading', 'question', 'stop', 'hold', 'wait', 'second', 'minute', 'moment', 'skip', 'next', 'repeat', 'again', 'resume', 'continue', 'right', 'wrong', 'correct', 'incorrect', 'mark', 'going', 'keep', 'carry', 'start', 'play', 'more', 'time', 'little', 'much', 'move', 'that', 'this'];
+const COMMAND_WORD_SET = new Set(COMMAND_WORDS);
+const alikeCache = new Map();
+/**
+ * The command words a heard word could stand for, best first. Several can sound the same
+ * ("write" may be "right" or "read"), so all close ones are kept and the phrase decides.
+ */
+function soundAlikes (w) {
+  if (w.length < 3 || COMMAND_WORD_SET.has(w) || isBuzzLike(w)) return [w]; // "buzz" sounds like "pause" but is never a command
+  let hit = alikeCache.get(w);
+  if (!hit) {
+    const found = [];
+    for (const c of COMMAND_WORDS) {
+      const s = soundSimilarity(w, c).score;
+      if (s >= 0.85) found.push([s + 0.01 * stringSimilarity(w, c), c]);
+    }
+    found.sort((a, b) => b[0] - a[0]);
+    hit = found.length ? found.slice(0, 3).map(f => f[1]) : [w];
+    if (alikeCache.size > 2000) alikeCache.clear();
+    alikeCache.set(w, hit);
+  }
+  return hit;
+}
+
+/** Every reading of the transcript with sound-alike words replaced by command words (bounded). */
+function readings (text) {
+  const options = wordsOf(text).slice(0, 12).map(soundAlikes);
+  let out = [''];
+  for (const opts of options) {
+    const next = [];
+    for (const prefix of out) for (const o of opts) { if (next.length < 48) next.push(prefix ? prefix + ' ' + o : o); }
+    out = next;
+  }
+  return out.map(s => s.replace(/^(?:okay|ok|please|uh|um|hey|so|and|well|yeah)\s+/, '').replace(/\s+(?:please|now)$/, '')).filter(Boolean);
+}
+
 /**
  * @param {string} text transcript
  * @param {string[]} allowed command names valid right now
  * @returns {string|null} command name
  */
 export function classifyCommand (text, allowed) {
-  const s = wordsOf(text).join(' ').replace(/^(?:okay|ok|please|uh|um|hey|so|and|well|yeah)\s+/, '').replace(/\s+(?:please|now)$/, '');
-  if (!s) return null;
-  for (const c of COMMANDS) if (allowed.includes(c.name) && c.re.test(s)) return c.name;
+  const candidates = readings(text);
+  for (const c of COMMANDS) {
+    if (!allowed.includes(c.name)) continue;
+    for (const s of candidates) if (c.re.test(s)) return c.name;
+  }
   return null;
+}
+
+// First words of commands that need a second word. On their own they mean nothing yet.
+const COMMAND_LEADS = new Set(['read', 'talk', 'speak', 'speed', 'slow', 'pause', 'stop', 'hold', 'wait', 'keep', 'carry']);
+
+/**
+ * True when the utterance is a single word that could be the first half of a two-word command
+ * whose second half is still to come ("read", "pause", "slow"). A buzz word never qualifies.
+ */
+export function isCommandLead (text) {
+  const raw = wordsOf(text);
+  if (raw.length !== 1 || isBuzzLike(raw[0])) return false;
+  return soundAlikes(raw[0]).some(w => COMMAND_LEADS.has(w));
 }
 
 /**

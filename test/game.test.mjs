@@ -297,3 +297,12 @@ test('real questions: twenty tossups and bonuses play through without a hitch', 
   assert.ok(w.game.history.every(h => h.result !== 'skipped'), 'no question errored');
   assert.ok(!w.logs.some(l => /failed/.test(l)), w.logs.filter(l => /failed/.test(l)).join('\n'));
 });
+
+test('"read faster" is passed to the app and the question carries on', async () => {
+  const asked = [];
+  const w = makeWorld({ questions: [KANT], onMode: chain(onceMode('spot', w => { w.hear('Read faster.', { dur: 0.8 }); setTimeout(() => w.hear('Slow down.', { dur: 0.8 }), 15); setTimeout(() => w.hear('Buzz.'), 30); }), onceMode('answer', w => w.hear('Kant'))) });
+  w.game.ui.onCommand = c => asked.push(c);
+  await w.run();
+  assert.deepEqual(asked, ['faster', 'slower']);
+  assert.equal(w.game.history[0].result, 'power', 'the speed requests neither buzzed nor ended the question');
+});

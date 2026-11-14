@@ -146,3 +146,11 @@ test('echo and filler detection', () => {
   assert.ok(!isEcho('buzz', spoken));
   assert.ok(isFillerOnly('Um.')); assert.ok(isFillerOnly('uh, hmm')); assert.ok(isFillerOnly('')); assert.ok(!isFillerOnly('um Kant'));
 });
+
+test('speed commands need two words', () => {
+  const all = ['pause', 'skip', 'faster', 'slower'];
+  for (const s of ['Read faster.', 'go faster', 'Speed up', 'speed it up', 'a bit faster', 'Okay, read a little faster please']) assert.equal(classifyCommand(s, all), 'faster', s);
+  for (const s of ['Read slower.', 'slow down', 'Slow it down.', 'a little slower', 'talk slower']) assert.equal(classifyCommand(s, all), 'slower', s);
+  for (const s of ['faster', 'slower', 'Faster than light', 'the faster horse', 'slowly']) assert.equal(classifyCommand(s, all), null, s);
+  assert.equal(classifyCommand('read faster', ['pause', 'skip']), null, 'only where allowed');
+});

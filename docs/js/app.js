@@ -24,10 +24,15 @@ const LS = {
   del (k) { try { localStorage.removeItem('cb.' + k); } catch (e) { /* ignore */ } }
 };
 
+// Reading speed is a multiple of the voice's natural pace. The first version shipped at 1.1; the
+// default is now one and a half times that.
+const SPEED = { min: 0.8, max: 2.5, step: 0.05, nudge: 0.15, first: 1.1, standard: 1.65, calm: 1.35 };
+const clampSpeed = v => Math.min(SPEED.max, Math.max(SPEED.min, Math.round((Number(v) || SPEED.standard) / SPEED.step) * SPEED.step));
 const DEFAULTS = {
+  settingsVersion: 2,
   filters: defaultFilters(),
   rules: { ...DEFAULT_RULES },
-  voice: 'supertonic', sid: 5, speed: 1.1, steps: 5, volume: 1,
+  voice: 'supertonic', sid: 5, speed: SPEED.standard, calmAnswers: true, steps: 5, volume: 1,
   asr: 'moonshine-base', vadThreshold: 0.5, leniency: 0.8,
   echoCancellation: true, noiseSuppression: true, autoGainControl: true, micId: '',
   showText: true
@@ -35,6 +40,11 @@ const DEFAULTS = {
 function loadSettings () {
   const s = LS.get('settings', {}) || {};
   const out = { ...DEFAULTS, ...s, rules: { ...DEFAULTS.rules, ...(s.rules || {}) }, filters: sanitizeFilters(s.filters) };
+  // Settings saved by the first version carry its default speed; move those to the new default once.
+  // A speed the listener chose for themselves is left alone.
+  if ((s.settingsVersion || 1) < 2 && (s.speed === undefined || Math.abs(s.speed - SPEED.first) < 0.001)) out.speed = SPEED.standard;
+  out.settingsVersion = DEFAULTS.settingsVersion;
+  out.speed = +clampSpeed(out.speed).toFixed(2);
   if (!VOICES[out.voice]) out.voice = DEFAULTS.voice;
   if (!RECOGNIZERS[out.asr]) out.asr = DEFAULTS.asr;
   out.sid = Math.min(VOICES[out.voice].speakers - 1, Math.max(0, out.sid | 0));
@@ -76,7 +86,7 @@ const judge = (answerline, transcripts, previous) => judgeAnswer({ answerline, t
 async function boot () {
   log(`Carbowl ${VERSION}; ${navigator.userAgent}`);
   restoreHistory();
-  buildSettings(); renderScore(); renderMain();
+  buildSettings(); renderScore(); renderMain(); renderSpeed();
   if ('serviceWorker' in navigator && !TEST) navigator.serviceWorker.register('sw.js').catch(e => log('offline support not installed: ' + e.message));
   try { manifest = await loadManifest(BASE); } catch (e) { return fail('Could not load the app files. Check the connection and reload.', e); }
   // Only offer voices and recognisers that this copy of the site actually ships.
@@ -153,7 +163,7 @@ async function startEngines () {
   }
   LS.del('loading');
   enginesFor = `${settings.voice}|${settings.asr}`;
-  narrator = new Narrator({ tts, audio, voice: voiceParams, log });
+  narrator = new Narrator({ tts, audio, voice: voiceParams, phraseCap: () => settings.calmAnswers ? SPEED.calm : null, log });
   listener.addEventListener('level', e => onLevel(e.detail));
   tts.addEventListener('crash', () => fail('The voice stopped unexpectedly. Reload the page.'));
   listener.addEventListener('crash', () => fail('Listening stopped unexpectedly. Reload the page.'));
@@ -163,15 +173,16 @@ async function startEngines () {
 
 /** Pre-generates the fixed phrases and checks each one by ear (synthesise, transcribe, compare). */
 async function preparePhrases () {
-  const my = enginesFor + '|' + JSON.stringify(voiceParams());
+  const my = enginesFor + '|' + JSON.stringify(narrator._voice('phrase'));
+  if (preparePhrases.token === my) return; // already prepared (or being prepared) for this voice and pace
   preparePhrases.token = my;
   const phrases = Object.values(PHRASES);
   let fixed = 0;
   for (const text of phrases) {
     if (preparePhrases.token !== my) return; // settings changed; a newer pass is running
     try {
-      const v = voiceParams();
-      let audioClip = await narrator.synth(text, { priority: 8, pin: true });
+      const v = narrator._voice('phrase');
+      let audioClip = await narrator.synth(text, { priority: 8, pin: true, kind: 'phrase' });
       if (phase === 'running') continue; // never compete with a live game for the recogniser
       for (const tweak of [0.95, 1.06]) {
         if (await soundsRight(text, audioClip)) break;
@@ -251,7 +262,7 @@ async function start () {
   game = new Game({
     feed, narrator, listener, audio, judge,
     rules: () => ({ ...settings.rules, ...(micOk ? {} : { buzzSensitivity: 'off', selfJudge: true }) }),
-    ui: { onState, onQuestion, onProgress, onPart, onHeard, onResult, onAnswer, onScore: renderScore, onError: e => toast('Something went wrong: ' + (e.message || e)) },
+    ui: { onState, onQuestion, onProgress, onPart, onHeard, onResult, onAnswer, onScore: renderScore, onCommand: cmd => { if (cmd === 'faster' || cmd === 'slower') { audio.tone('tick'); nudgeSpeed(cmd === 'faster' ? 1 : -1); } }, onError: e => toast('Something went wrong: ' + (e.message || e)) },
     log
   });
   game.verify = async clip => { if (!listener || listener.mode === 'answer') return null; const r = await listener.transcribe(clip.samples, clip.sampleRate); return r.text; };
@@ -425,6 +436,28 @@ function renderMain () {
   $('btnRight').hidden = !canRight; $('btnWrong').hidden = !canWrong;
 }
 
+// ---------- reading speed (on-screen stepper, Settings slider, and "read faster" / "read slower") ----------
+let phraseTimer = null;
+function setSpeed (v, { quiet = false } = {}) {
+  const next = +clampSpeed(v).toFixed(2);
+  const changed = next !== settings.speed;
+  settings.speed = next; saveSettings();
+  renderSpeed();
+  if (changed && !quiet) toast(`Reading speed ${next.toFixed(2)}×`, 1400);
+  // Verdict phrases are prepared ahead for the current pace; redo them once the listener stops adjusting.
+  clearTimeout(phraseTimer);
+  phraseTimer = setTimeout(() => { if (narrator && phase === 'ready') preparePhrases(); }, 1500);
+  return next;
+}
+function nudgeSpeed (direction) { return setSpeed(settings.speed + direction * SPEED.nudge); }
+function renderSpeed () {
+  $('speedNow').textContent = settings.speed.toFixed(2) + '×';
+  $('speedDown').disabled = settings.speed <= SPEED.min + 1e-6; $('speedUp').disabled = settings.speed >= SPEED.max - 1e-6;
+  const slider = $('s-speed'); if (slider) { slider.value = settings.speed; const out = $('settingsBody').querySelector('output[data-for="speed"]'); if (out) out.textContent = settings.speed + '×'; }
+}
+$('speedDown').addEventListener('click', () => nudgeSpeed(-1));
+$('speedUp').addEventListener('click', () => nudgeSpeed(1));
+
 function onLevel (l) {
   const db = 20 * Math.log10(Math.max(1e-5, l.rms));
   $('meterFill').style.width = Math.max(0, Math.min(100, (db + 60) * (100 / 54))).toFixed(0) + '%';
@@ -486,7 +519,8 @@ function buildSettings () {
   <section class="sec"><h3>Voice</h3>
     ${Object.keys(VOICES).length > 1 ? sel('voice', 'Voice type', Object.entries(VOICES).map(([k, x]) => [k, x.label]), 'Natural sounds better; Plain is a smaller download.') : ''}
     ${v.speakers > 1 ? sel('sid', 'Speaker', v.speakerNames.map((n, i) => [i, n])) : ''}
-    ${rng('speed', 'Reading speed', 0.8, 1.6, 0.05, '×')}
+    ${rng('speed', 'Reading speed', SPEED.min, SPEED.max, SPEED.step, '×', 'Also the − and + beside the microphone meter, or say “read faster” / “read slower”.')}
+    ${sw('calmAnswers', 'Calmer pace for answers and verdicts', `Questions are read at full speed; “The answer is …” never faster than ${SPEED.calm}×.`)}
     ${settings.voice === 'supertonic' ? sel('steps', 'Voice quality', [[3, 'Faster'], [5, 'Standard'], [8, 'Best (slower to generate)']], 'Lowered automatically if this phone cannot keep up.') : ''}
     ${rng('volume', 'Volume', 0.2, 1.5, 0.05, '×')}
     <div class="rowb"><button type="button" class="btn" data-act="test-voice">Play a sample</button></div>
@@ -554,7 +588,8 @@ function onSettingInput (e) {
     const out = $('settingsBody').querySelector(`output[data-for="${t.dataset.k}"]`); if (out) out.textContent = v + (out.dataset.unit || '');
     if (t.dataset.k === 'voice') { settings.sid = v === 'supertonic' ? DEFAULTS.sid : 0; saveSettings(); needEngines = true; if (e.type === 'change') buildSettings(); }
     if (t.dataset.k === 'asr') needEngines = true;
-    if (['sid', 'speed', 'steps'].includes(t.dataset.k)) needPhrases = true;
+    if (['sid', 'speed', 'steps', 'calmAnswers'].includes(t.dataset.k)) needPhrases = true;
+    if (t.dataset.k === 'speed') { settings.speed = +clampSpeed(v).toFixed(2); saveSettings(); renderSpeed(); }
     if (t.dataset.k === 'volume') audio.setVolume(v);
     if (['echoCancellation', 'noiseSuppression', 'autoGainControl', 'micId'].includes(t.dataset.k)) needMic = true;
     if (t.dataset.k === 'showText') renderText();

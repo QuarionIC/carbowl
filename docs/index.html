@@ -41,10 +41,15 @@
     </section>
   </main>
 
-  <div class="mic" id="mic" aria-hidden="true">
+  <div class="mic" id="mic">
     <span class="dot" id="micDot"></span>
     <div class="meter"><i id="meterFill"></i></div>
     <span class="miclabel" id="micLabel">Microphone off</span>
+    <span class="speed" role="group" aria-label="Reading speed">
+      <button class="step" id="speedDown" aria-label="Read slower" title="Read slower">&minus;</button>
+      <output id="speedNow" aria-live="polite"></output>
+      <button class="step" id="speedUp" aria-label="Read faster" title="Read faster">+</button>
+    </span>
   </div>
 
   <footer class="controls">

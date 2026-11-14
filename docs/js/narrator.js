@@ -10,9 +10,10 @@ export class Narrator {
    * @param {import('./speech.js').TtsClient} o.tts
    * @param {import('./audio.js').AudioEngine} o.audio
    * @param {() => { sid: number, speed: number, steps: number }} o.voice current voice settings
+   * @param {() => number|null} [o.phraseCap] top speed for verdicts and answers (questions may be read faster)
    */
-  constructor ({ tts, audio, voice, log }) {
-    this.tts = tts; this.audio = audio; this.voice = voice; this.log = log || (() => {});
+  constructor ({ tts, audio, voice, phraseCap, log }) {
+    this.tts = tts; this.audio = audio; this.voice = voice; this.phraseCap = phraseCap || (() => null); this.log = log || (() => {});
     this.cache = new Map();   // key -> Promise<audio>
     this.pinned = new Set();  // keys never evicted (fixed phrases)
     this.current = null;      // the Reading or one-off phrase now playing
@@ -21,9 +22,15 @@ export class Narrator {
 
   _key (text, v) { return `${v.sid}|${v.speed}|${v.steps}|${text}`; }
 
-  /** Synthesis quality follows how fast this device generates speech, so the reader never falls behind. */
-  _voice () {
+  /**
+   * Voice settings for a piece of speech. Synthesis quality follows how fast this device generates
+   * speech, so the reader never falls behind; verdicts and answers ("phrase") keep to a calmer pace
+   * than fast question reading when a cap is set.
+   * @param {'phrase'} [kind]
+   */
+  _voice (kind) {
     const v = { ...this.voice() };
+    if (kind === 'phrase') { const cap = this.phraseCap(); if (cap && v.speed > cap) v.speed = cap; }
     const rtf = this.tts.realTimeFactor;
     if (this.tts.stats.jobs >= 4 && v.steps > 2) {
       if (rtf > 1.0) v.steps = 2; else if (rtf > 0.7) v.steps = Math.min(v.steps, 3);
@@ -32,8 +39,8 @@ export class Narrator {
   }
 
   /** Starts (or reuses) synthesis of a piece of text. */
-  synth (text, { priority = 5, group = '', pin = false, voice } = {}) {
-    const v = voice || this._voice();
+  synth (text, { priority = 5, group = '', pin = false, voice, kind } = {}) {
+    const v = voice || this._voice(kind);
     const key = this._key(text, v);
     let p = this.cache.get(key);
     if (!p) {
@@ -68,7 +75,7 @@ export class Narrator {
   async say (text, { priority = 1, group = '', gain = 1 } = {}) {
     if (!text) return 'ended';
     let audio;
-    try { audio = await this.synth(text, { priority, group }); } catch (e) { this.log(`speech failed for "${text.slice(0, 40)}": ${e.message}`); return 'failed'; }
+    try { audio = await this.synth(text, { priority, group, kind: 'phrase' }); } catch (e) { this.log(`speech failed for "${text.slice(0, 40)}": ${e.message}`); return 'failed'; }
     // A paused reading stays paused underneath a phrase ("Quiz paused"); anything audible is cut.
     const under = this.current && this.current.kind === 'reading' && this.current.state === 'paused' ? this.current : null;
     if (this.current && !under) this.current.stop();

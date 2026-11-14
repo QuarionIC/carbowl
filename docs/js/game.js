@@ -161,7 +161,13 @@ export class Game {
       if (e.type === 'stop' || this.stopping) throw new StopSignal();
       let command = null;
       if (e.type === 'tap') command = e.action;
-      else if (e.type === 'utterance') command = classifyCommand(e.text, ['pause', 'skip']);
+      else if (e.type === 'utterance') command = classifyCommand(e.text, ['pause', 'skip', 'faster', 'slower']);
+      if (command === 'faster' || command === 'slower') {
+        // Reading speed belongs to the app's settings; the game only passes the request on and keeps going.
+        this.log('heard a speed request: ' + command);
+        this._emit('onCommand', command);
+        continue;
+      }
       if (command === 'pause') {
         const t0 = now();
         if (onPause) onPause();
@@ -205,10 +211,10 @@ export class Game {
     const answer = mainAnswer(answerSanitized);
     const variants = [`The answer is ${answer}.`, `The correct answer is: ${answer}.`, `The answer was ${answer}.`];
     const p = (async () => {
-      if (!verify) { this.narrator.synth(variants[0], { priority: 4 }).catch(() => {}); return variants[0]; }
+      if (!verify) { this.narrator.synth(variants[0], { priority: 4, kind: 'phrase' }).catch(() => {}); return variants[0]; }
       for (const text of variants) {
         try {
-          const audio = await this.narrator.synth(text, { priority: 4 });
+          const audio = await this.narrator.synth(text, { priority: 4, kind: 'phrase' });
           const heard = await verify(audio);
           if (heard === null) return text; // verification unavailable
           const r = this.judge(answerHtml, [heard.replace(/^.*?\banswer\b\s*(?:is|was)?:?\s*/i, '')], []);

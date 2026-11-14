@@ -46,7 +46,10 @@ const COMMANDS = [
   { name: 'repeat', re: /^(?:repeat|repeat (?:it|that)|repeat (?:the |this |that )?question|say (?:it|that) again|read (?:it|that) again|again|one more time)$/ },
   // Two words on purpose: a lone "pause" is too easily a misheard "buzz".
   { name: 'pause', re: /^(?:pause (?:the |this )?(?:quiz|game|reading|question)|stop (?:the |this )?(?:quiz|game|reading)|hold on|wait a (?:second|minute|moment|sec))$/ },
-  { name: 'resume', re: /^(?:resume|resume (?:the )?(?:quiz|game|reading)|continue|keep going|go on|go ahead|start|unpause|carry on|play)$/ }
+  { name: 'resume', re: /^(?:resume|resume (?:the )?(?:quiz|game|reading)|continue|keep going|go on|go ahead|start|unpause|carry on|play)$/ },
+  // Reading speed. Two words, so a stray "faster" in a question or a conversation changes nothing.
+  { name: 'faster', re: /^(?:(?:read|go|talk|speak) (?:a (?:bit|little) )?faster|speed (?:it )?up|(?:a (?:bit|little)|much) faster)$/ },
+  { name: 'slower', re: /^(?:(?:read|go|talk|speak) (?:a (?:bit|little) )?slower|slow (?:it )?down|(?:a (?:bit|little)|much) slower)$/ }
 ];
 
 /**

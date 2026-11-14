@@ -140,7 +140,12 @@ async function startEngines () {
   tts = new TtsClient({ base: BASE, log }); listener = new ListenClient({ base: BASE, log });
   const started = performance.now();
   try {
-    const [a, b] = await Promise.all([tts.init({ manifest, voice: settings.voice }), listener.init({ manifest, asr: settings.asr, vadThreshold: settings.vadThreshold })]);
+    // One after the other, not together: each model is briefly held in memory two or three times
+    // over while it loads, and a phone has room for one such peak at a time.
+    $('status').textContent = 'Getting ready… 1 of 2';
+    const b = await listener.init({ manifest, asr: settings.asr, vadThreshold: settings.vadThreshold });
+    $('status').textContent = 'Getting ready… 2 of 2';
+    const a = await tts.init({ manifest, voice: settings.voice });
     log(`speech ready in ${a.initMs} ms (${a.voice}, ${a.sampleRate} Hz, heap ${a.heapMiB} MiB); listening ready in ${b.initMs} ms (${b.asr}, heap ${b.heapMiB} MiB); total ${Math.round(performance.now() - started)} ms`);
   } catch (e) {
     LS.del('loading');

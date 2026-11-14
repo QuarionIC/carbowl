@@ -337,6 +337,8 @@ function onQuestion (rec) {
   const q = rec.q || {};
   const n = (game ? game.count[rec.type] : 0) + 1;
   $('meta').textContent = [`${rec.type === 'bonus' ? 'Bonus' : 'Tossup'} ${n}`, q.subcategory && q.subcategory !== q.category ? q.subcategory : q.category, q.set && q.set.name, difficultyLabel(q.difficulty)].filter(Boolean).join(' · ');
+  // For troubleshooting: which question, and how the voice is doing on this device right now.
+  if (narrator && tts) { const v = narrator._voice(); log(`${rec.type} ${n} (${rec.id}): reading at ${v.speed}x, voice quality ${v.steps}${v.steps !== settings.steps ? ' (lowered from ' + settings.steps + ')' : ''}, speech speed factor ${tts.realTimeFactor.toFixed(2)}`); }
   $('answer').hidden = true; $('answer').innerHTML = ''; $('heard').textContent = '';
   app.dataset.result = '';
   $('progress').hidden = false; $('progressFill').style.width = '0%';

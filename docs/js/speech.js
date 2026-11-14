@@ -125,7 +125,11 @@ export class TtsClient extends WorkerClient {
     this.nextId = 1;
     this.pending = new Map();
     this.stats = { jobs: 0, genMs: 0, audioMs: 0 };
+    this.byQuality = new Map(); // refinement steps -> { jobs, genMs, audioMs }
   }
+
+  /** Generation statistics for one quality setting, so that slowness is judged at that setting only. */
+  statsFor (steps) { return this.byQuality.get(steps) || { jobs: 0, genMs: 0, audioMs: 0 }; }
 
   init ({ manifest, voice }) { return this._init({ type: 'init', base: String(this.base), manifest, voice }); }
 
@@ -134,6 +138,10 @@ export class TtsClient extends WorkerClient {
     else if (m.type === 'audio') {
       const p = this.pending.get(m.id); this.pending.delete(m.id);
       this.stats.jobs++; this.stats.genMs += m.genMs; this.stats.audioMs += m.audioMs;
+      if (p && p.steps !== undefined && m.audioMs >= 1500) { // very short clips say little about sustained speed
+        const q = this.byQuality.get(p.steps) || { jobs: 0, genMs: 0, audioMs: 0 };
+        q.jobs++; q.genMs += m.genMs; q.audioMs += m.audioMs; this.byQuality.set(p.steps, q);
+      }
       if (p) p.resolve({ samples: m.samples, sampleRate: m.sampleRate, genMs: m.genMs, audioMs: m.audioMs });
     } else if (m.type === 'failed') {
       const p = this.pending.get(m.id); this.pending.delete(m.id);
@@ -147,7 +155,7 @@ export class TtsClient extends WorkerClient {
   /** @returns {{ id: number, promise: Promise<{samples: Float32Array, sampleRate: number}> }} */
   speak (text, { sid = 0, speed = 1, steps = 5, priority = 5, group = '' } = {}) {
     const id = this.nextId++;
-    const promise = new Promise((resolve, reject) => { this.pending.set(id, { resolve, reject }); });
+    const promise = new Promise((resolve, reject) => { this.pending.set(id, { resolve, reject, steps }); });
     promise.catch(() => {}); // callers attach their own handlers; avoid unhandled-rejection noise for cancellations
     this.worker.postMessage({ type: 'speak', id, text, sid, speed, steps, priority, group });
     return { id, promise };

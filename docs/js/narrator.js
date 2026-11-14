@@ -31,10 +31,21 @@ export class Narrator {
   _voice (kind) {
     const v = { ...this.voice() };
     if (kind === 'phrase') { const cap = this.phraseCap(); if (cap && v.speed > cap) v.speed = cap; }
-    const rtf = this.tts.realTimeFactor;
-    if (this.tts.stats.jobs >= 4 && v.steps > 2) {
-      if (rtf > 1.0) v.steps = 2; else if (rtf > 0.7) v.steps = Math.min(v.steps, 3);
+    // Quality (refinement steps) only comes down when this device has shown, at the current setting,
+    // that it cannot generate speech as fast as it is spoken; and it then stays down for the session,
+    // so the voice does not flip back and forth.
+    let steps = v.steps;
+    if (this.stepCap && steps > this.stepCap) steps = this.stepCap;
+    const st = this.tts.statsFor ? this.tts.statsFor(steps) : null;
+    if (st && st.jobs >= 3 && st.audioMs > 6000 && st.genMs / st.audioMs > 0.9) {
+      const lower = [8, 5, 3, 2].find(x => x < steps);
+      if (lower) {
+        this.stepCap = lower;
+        this.log(`this device generates speech slowly (${(st.genMs / st.audioMs).toFixed(2)} of real time at quality ${steps}); lowering voice quality to ${lower} so the reader keeps up`);
+        steps = lower;
+      }
     }
+    v.steps = steps;
     return v;
   }
 
@@ -153,7 +164,10 @@ export class Reading {
       if (this.state === 'paused') continue;
       if (this.pausedAt && this.pausedAt.i === i) { startSec = this.pausedAt.sec; this.pausedAt = null; } else if (fraction > 0) { startSec = Math.max(0, fraction * (audio.samples.length / audio.sampleRate) - 0.3); fraction = 0; } else startSec = 0;
       const now = this.n.audio.time;
-      if (nextStart && now > nextStart + 0.25 && performance.now() - waitFrom > 250) this.underruns++;
+      if (nextStart && now > nextStart + 0.25 && performance.now() - waitFrom > 250) {
+        this.underruns++;
+        this.n.log(`reader fell behind: the next sentence started ${Math.round((now - nextStart) * 1000)} ms late (speech speed factor ${this.n.tts.realTimeFactor.toFixed(2)})`);
+      }
       const handle = this.n.audio.play(audio.samples, audio.sampleRate, { when: Math.max(now + 0.02, nextStart), offset: startSec });
       this.handle = handle;
       const bufferDur = audio.samples.length / audio.sampleRate;

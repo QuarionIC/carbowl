@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CATEGORY_TREE, ALL_SUBCATEGORIES, ALL_ALTERNATES, DIFFICULTIES, defaultFilters, sanitizeFilters, buildParams, isValidQuestion, activeCategories, filterSignature, QuestionFeed, NoQuestionsError } from '../docs/js/qb.js';
+import { CATEGORY_TREE, ALL_SUBCATEGORIES, ALL_ALTERNATES, DIFFICULTIES, defaultFilters, sanitizeFilters, buildParams, isValidQuestion, activeCategories, filterSignature, QuestionFeed, NoQuestionsError, QUICK_TOPICS, topicOn, setTopic } from '../docs/js/qb.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const fx = f => JSON.parse(fs.readFileSync(path.join(here, 'fixtures', f), 'utf8'));
@@ -45,7 +45,11 @@ test('client-side validity mirrors QBReader', () => {
   const f = { ...defaultFilters(), subs: ['Philosophy', 'Other Science'], alts: ['Math'], difficulties: [7] };
   assert.ok(isValidQuestion({ category: 'Philosophy', subcategory: 'Philosophy', difficulty: 7 }, f));
   assert.ok(isValidQuestion({ category: 'Science', subcategory: 'Other Science', alternate_subcategory: 'Math', difficulty: 7 }, f));
-  assert.ok(isValidQuestion({ category: 'Science', subcategory: 'Other Science', difficulty: 7 }, f), 'untagged questions pass');
+  // QBReader lets a question with no alternate tag through; with the alternates narrowed to Math
+  // that would bring in untagged astronomy, so it is turned away unless tagged questions run out.
+  assert.ok(!isValidQuestion({ category: 'Science', subcategory: 'Other Science', difficulty: 7 }, f), 'untagged is turned away when narrowed');
+  assert.ok(isValidQuestion({ category: 'Science', subcategory: 'Other Science', difficulty: 7 }, f, { allowUntagged: true }));
+  assert.ok(isValidQuestion({ category: 'Science', subcategory: 'Other Science', difficulty: 7 }, { ...f, alts: ALL_ALTERNATES.slice() }), 'untagged passes when nothing is narrowed');
   assert.ok(!isValidQuestion({ category: 'Science', subcategory: 'Other Science', alternate_subcategory: 'Astronomy', difficulty: 7 }, f));
   assert.ok(!isValidQuestion({ category: 'Science', subcategory: 'Biology', difficulty: 7 }, f));
   assert.ok(!isValidQuestion({ category: 'History', subcategory: 'World History', difficulty: 7 }, f));
@@ -110,6 +114,49 @@ test('feed: changing filters discards the old buffer and ignores late replies', 
   assert.equal(feed.buffered('tossup'), 0, 'the late philosophy batch was ignored');
   const q = await feed.next('tossup');
   assert.equal(q.category, 'History');
+});
+
+test('quick topics: Math and Computer Science switch on and off without dragging in the rest of Other Science', () => {
+  const [phil, math, cs] = QUICK_TOPICS;
+  let f = defaultFilters();
+  assert.ok(topicOn(f, phil)); assert.ok(!topicOn(f, math)); assert.ok(!topicOn(f, cs));
+  f = setTopic(f, math, true);
+  assert.ok(topicOn(f, math)); assert.ok(!topicOn(f, cs), 'Math alone does not switch Computer Science on');
+  assert.deepEqual(params(f).alternateSubcategories, 'Math');
+  assert.equal(params(f).categories, 'Science,Philosophy'); assert.equal(params(f).subcategories, 'Other Science,Philosophy');
+  f = setTopic(f, cs, true);
+  assert.ok(topicOn(f, math) && topicOn(f, cs)); assert.equal(params(f).alternateSubcategories, 'Math,Computer Science');
+  assert.ok(isValidQuestion({ category: 'Science', subcategory: 'Other Science', alternate_subcategory: 'Computer Science', difficulty: 8 }, f));
+  assert.ok(!isValidQuestion({ category: 'Science', subcategory: 'Other Science', alternate_subcategory: 'Astronomy', difficulty: 8 }, f));
+  assert.ok(!isValidQuestion({ category: 'Science', subcategory: 'Physics', difficulty: 8 }, f));
+  f = setTopic(f, math, false);
+  assert.ok(!topicOn(f, math) && topicOn(f, cs));
+  f = setTopic(f, cs, false);
+  assert.ok(!f.subs.includes('Other Science'), 'the subcategory goes when its last topic goes');
+  assert.deepEqual(params(f), params(defaultFilters()), 'back to where it started');
+  // Other categories' alternates are never touched.
+  assert.equal(f.alts.filter(a => ['Drama', 'Poetry', 'Film', 'Economics'].includes(a)).length, 4);
+  f = setTopic(f, phil, false);
+  assert.ok(!topicOn(f, phil)); assert.deepEqual(f.subs, []);
+  // A listener who ticked all of Other Science in Settings sees both switches on, and can take one out.
+  let g = { ...defaultFilters(), subs: ['Philosophy', 'Other Science'] };
+  assert.ok(topicOn(g, math) && topicOn(g, cs));
+  g = setTopic(g, math, false);
+  assert.ok(!topicOn(g, math) && topicOn(g, cs)); assert.ok(g.alts.includes('Astronomy'));
+});
+
+test('feed: a narrowed topic turns untagged questions away, until only untagged ones are left', async () => {
+  const mk = (id, alt) => ({ _id: id, category: 'Science', subcategory: 'Other Science', ...(alt ? { alternate_subcategory: alt } : {}), difficulty: 8, question_sanitized: 'Q ' + id, answer_sanitized: 'A ' + id });
+  const f = setTopic({ ...defaultFilters(), subs: [] }, QUICK_TOPICS[1], true);
+  const tagged = new QuestionFeed({ fetchImpl: async () => respond({ tossups: [mk('u1'), mk('m1', 'Math'), mk('a1', 'Astronomy'), mk('u2')] }) });
+  tagged.setFilters(f);
+  assert.equal((await tagged.next('tossup'))._id, 'm1');
+  const logs = [];
+  const bare = new QuestionFeed({ fetchImpl: async () => respond({ tossups: [mk('u1'), mk('a1', 'Astronomy'), mk('u2')] }), log: m => logs.push(m) });
+  bare.setFilters(f);
+  const q = await bare.next('tossup');
+  assert.equal(q._id, 'u1', 'untagged questions are used rather than stalling');
+  assert.ok(logs.some(l => /untagged/.test(l)));
 });
 
 test('feed: when everything has been heard, repeats are allowed rather than stalling', async () => {

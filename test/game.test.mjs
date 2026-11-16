@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Game, PHRASES } from '../docs/js/game.js';
+import { Game, PHRASES, spellOut } from '../docs/js/game.js';
 import { judgeAnswer } from '../docs/js/judge.js';
 import { prepareTossup } from '../docs/js/speechtext.js';
 import checkAnswer from '../docs/vendor/qb-answer-checker.js';
@@ -27,10 +27,10 @@ const BONUS = {
   answers_sanitized: ['An Enquiry Concerning Human Understanding', 'Nelson Goodman', 'John Locke']
 };
 
-function makeWorld ({ questions, rules = {}, onMode, onState, limit }) {
+function makeWorld ({ questions, rules = {}, onMode, onState, limit, assistant }) {
   const t0 = performance.now();
   const audio = { get time () { return (performance.now() - t0) / 1000; }, tone: () => 0, latency: 0 };
-  const spoken = []; const tones = []; const modes = []; const states = []; const logs = [];
+  const spoken = []; const tones = []; const modes = []; const states = []; const logs = []; const reads = [];
   audio.tone = name => { tones.push(name); return 0; };
   let groupN = 0;
   const narrator = {
@@ -40,6 +40,7 @@ function makeWorld ({ questions, rules = {}, onMode, onState, limit }) {
     stop () { if (this.current) this.current.stop(); },
     async say (text) { spoken.push(text); await sleep(3); return 'ended'; },
     read (chunks, { onProgress, from = 0 } = {}) {
+      reads.push({ from, first: chunks.length ? chunks[0].text.slice(0, 24) : '' });
       const total = chunks.length ? chunks[chunks.length - 1].end : 0;
       let base = from; let startedAt = audio.time; let state = 'reading'; let resolveDone; let timer = null;
       const pos = () => state === 'reading' ? Math.min(total, base + (audio.time - startedAt) * CHARS_PER_SEC) : base;
@@ -67,15 +68,17 @@ function makeWorld ({ questions, rules = {}, onMode, onState, limit }) {
   const queue = questions.slice();
   const feed = { next: async type => { const q = queue.shift(); if (!q) { const e = new Error('none'); e.name = 'NoQuestionsError'; throw e; } return { ...q }; }, prefetch () {} };
   const game = new Game({
-    feed, narrator, listener, audio,
+    feed, narrator, listener, audio, assistant,
     judge: (answerline, transcripts, previous) => judgeAnswer({ answerline, transcripts, previous, checkAnswer }),
-    rules: () => ({ tossupDeadSec: 0.12, bonusAnswerSec: 0.12, answerStartSec: 0.15, answerMaxSec: 0.6, betweenSec: 0.04, sentenceGapSec: 0, ...rules }),
+    rules: () => ({ tossupDeadSec: 0.12, bonusAnswerSec: 0.12, answerStartSec: 0.15, answerMaxSec: 0.6, betweenSec: 0.04, sentenceGapSec: 0, holdMaxSec: 0.12, confirmSec: 0.1, followUpSec: 0.06, ...rules }),
     ui: { onState: (s, extra) => { states.push(s); if (onState) onState(s, extra || {}, world); } },
     log: m => logs.push(m)
   });
-  const world = { game, narrator, listener, audio, spoken, tones, modes, states, logs, hear, run: () => game.run({ limit: limit || questions.length }) };
+  const world = { game, narrator, listener, audio, spoken, tones, modes, states, logs, reads, hear, run: () => game.run({ limit: limit || questions.length }) };
   return world;
 }
+/** A slower stand-in question, so that things can happen while it is still being read. */
+const LONG = { ...KANT, _id: 'long', question_sanitized: (KANT.question_sanitized + ' ').repeat(3).trim() };
 
 /** Fires fn once, the first time the listener enters the given mode after `skip` earlier entries. */
 const onceMode = (mode, fn, skip = 0) => { let seen = 0; let done = false; return (m, w) => { if (m !== mode || done) return; if (seen++ < skip) return; done = true; setTimeout(() => fn(w), 8); }; };
@@ -331,4 +334,252 @@ test('a held first word followed by something else: both are handled, in order',
   const w = makeWorld({ questions: [KANT], rules: { commandHoldSec: 0.08 }, onMode: chain(onceMode('spot', w => { w.hear('Read.', { dur: 0.4 }); setTimeout(() => w.hear('Immanuel Kant is the answer here.', { dur: 2.4 }), 20); }), onceMode('answer', w => w.hear('Kant'))) });
   await w.run();
   assert.equal(w.game.history[0].result, 'power', 'the lone word became the buzz; the long sentence was not a command');
+});
+
+test('ending in the middle of a bonus keeps the parts already answered, and every finished question is handed over for saving', async () => {
+  const saved = [];
+  const w = makeWorld({ questions: [KANT, BONUS], limit: 2, onState: (s, extra, w) => { if (s === 'reading' && extra.type === 'bonus' && extra.part === 1 && !w.fired) { w.fired = true; setTimeout(() => w.game.stop(), 5); } } });
+  w.game.ui.onSaved = rec => saved.push(`${rec.type}:${rec.type === 'tossup' ? rec.result : rec.parts.map(p => p.result).join(',')}`);
+  await w.run();
+  assert.deepEqual(w.game.history.map(h => h.type), ['tossup', 'bonus']);
+  assert.deepEqual(w.game.history[1].parts.map(p => p.result), ['none', null, null]);
+  assert.deepEqual(saved, ['tossup:dead', 'bonus:none,,']);
+  // Correcting a verdict hands the record over again.
+  w.game.override(w.game.history[1], true, 0);
+  assert.equal(saved[2], 'bonus:correct,,');
+});
+
+// ---- the reader stops for a voice ------------------------------------------------------
+
+test('hold: the reader stops the moment a voice starts, and the buzz counts from that moment', async () => {
+  let pausedAt = null;
+  const w = makeWorld({ questions: [LONG], rules: { holdMaxSec: 1 }, onMode: chain(onceMode('spot', w => {
+    w.hear('', { type: 'speechstart' });
+    setTimeout(() => { pausedAt = w.game.reading && w.game.reading.state; }, 15);
+    setTimeout(() => w.hear('Buzz.', { dur: 0.03 }), 40);
+  }), onceMode('answer', w => w.hear('Kant'))) });
+  await w.run();
+  const rec = w.game.history[0];
+  assert.equal(pausedAt, 'paused', 'reading stopped as soon as speech began');
+  assert.equal(rec.result, 'power');
+  assert.ok(rec.buzzOffset < prepareTossup(LONG).text.length / 2, `buzz placed where the voice began (${rec.buzzOffset})`);
+});
+
+test('hold: a noise or unrelated talk only interrupts the reader briefly', async () => {
+  const w = makeWorld({ questions: [LONG], rules: { holdMaxSec: 1 }, onMode: onceMode('spot', w => {
+    w.hear('', { type: 'speechstart' });
+    setTimeout(() => w.listener.dispatchEvent(new CustomEvent('speechend', { detail: { dropped: true } })), 15);
+    setTimeout(() => w.hear('', { type: 'speechstart' }), 40);
+    setTimeout(() => w.hear('We should stop for gas at the next exit.', { dur: 0.02 }), 60);
+  }) });
+  await w.run();
+  assert.equal(w.game.history[0].result, 'dead', 'the question was read to the end');
+  assert.equal(w.logs.filter(l => /^carried on reading/.test(l)).length, 2);
+  assert.equal(w.reads.length, 1, 'the same reading carried on; nothing was restarted');
+});
+
+test('hold: with no words at all the reader carries on by itself', async () => {
+  const w = makeWorld({ questions: [LONG], rules: { holdMaxSec: 0.05 }, onMode: onceMode('spot', w => { w.hear('', { type: 'speechstart' }); setTimeout(() => w.listener.dispatchEvent(new CustomEvent('speechend', { detail: { dropped: false } })), 5); }) });
+  await w.run();
+  assert.equal(w.game.history[0].result, 'dead');
+  assert.ok(w.logs.some(l => /no words followed/.test(l)));
+});
+
+test('hold: after repeated false alarms the reader stops stopping (automatic setting only)', async () => {
+  const cough = w => { w.hear('', { type: 'speechstart' }); setTimeout(() => w.listener.dispatchEvent(new CustomEvent('speechend', { detail: { dropped: true } })), 4); };
+  const run = async rules => { const w = makeWorld({ questions: [LONG], rules, onMode: onceMode('spot', w => { for (let i = 0; i < 6; i++) setTimeout(() => cough(w), 10 + i * 22); }) }); await w.run(); return w; };
+  const auto = await run({});
+  assert.ok(auto.logs.some(l => /no longer stops at the first sound/.test(l)));
+  assert.equal(auto.logs.filter(l => /^carried on reading/.test(l)).length, 4, 'four false alarms, then no more holds');
+  const always = await run({ holdOnVoice: 'on' });
+  assert.equal(always.logs.filter(l => /^carried on reading/.test(l)).length, 6);
+  const never = await run({ holdOnVoice: 'off' });
+  assert.equal(never.logs.filter(l => /^carried on reading/.test(l)).length, 0);
+});
+
+// ---- sounds that could not be made out ---------------------------------------------------
+
+test('unclear: a short sound that was not understood is asked for again, and then counts as the buzz', async () => {
+  const w = makeWorld({ questions: [LONG], rules: { confirmSec: 0.5 }, onMode: chain(onceMode('spot', w => { w.hear('', { dur: 0.3 }); setTimeout(() => w.hear('Buzz.'), 40); }), onceMode('answer', w => w.hear('Kant'))) });
+  await w.run();
+  const rec = w.game.history[0];
+  assert.ok(w.tones.includes('unsure'));
+  assert.equal(rec.result, 'power');
+  assert.ok(w.logs.some(l => /said again/.test(l)));
+  assert.ok(rec.buzzOffset < prepareTossup(LONG).text.length / 2, `the buzz counts from the first sound (${rec.buzzOffset})`);
+});
+
+test('unclear: saying the answer itself after "say again?" is taken as buzz and answer', async () => {
+  const w = makeWorld({ questions: [LONG], rules: { confirmSec: 0.5 }, onMode: onceMode('spot', w => { w.hear('', { dur: 0.3 }); setTimeout(() => w.hear('Immanuel Kant.', { dur: 0.9 }), 40); }) });
+  await w.run();
+  assert.equal(w.game.history[0].result, 'power'); assert.equal(w.game.history[0].heard, 'Immanuel Kant.');
+});
+
+test('unclear: if nothing follows, the reading carries on with no penalty; strict mode never asks', async () => {
+  const w = makeWorld({ questions: [LONG], rules: { confirmSec: 0.04 }, onMode: onceMode('spot', w => w.hear('', { dur: 0.3 })) });
+  await w.run();
+  assert.equal(w.game.history[0].result, 'dead'); assert.equal(w.game.history[0].points, 0);
+  assert.ok(w.logs.some(l => /not repeated/.test(l)));
+  const strict = makeWorld({ questions: [LONG], rules: { buzzSensitivity: 'strict' }, onMode: onceMode('spot', w => w.hear('', { dur: 0.3 })) });
+  await strict.run();
+  assert.ok(!strict.tones.includes('unsure'));
+});
+
+test('unclear: asking is given up when it keeps leading nowhere', async () => {
+  const w = makeWorld({ questions: [LONG, LONG, LONG], rules: { confirmSec: 0.01, mode: 'tossups' }, onMode: (m, w) => { if (m === 'spot') { for (let i = 0; i < 3; i++) setTimeout(() => w.hear('', { dur: 0.3 }), 8 + i * 30); } } });
+  await w.run();
+  assert.equal(w.tones.filter(t => t === 'unsure').length, 4, 'four tries, then silence about it');
+});
+
+// ---- answers ------------------------------------------------------------------------------
+
+test('a second "buzz" said because the first seemed unheard is not taken for the answer', async () => {
+  const w = makeWorld({ questions: [KANT], rules: { answerStartSec: 0.3, answerMaxSec: 2 }, onMode: chain(onceMode('spot', w => w.hear('Buzz.')), onceMode('answer', w => { w.hear('Buzz.'); setTimeout(() => w.hear('Buzz buzz.'), 20); setTimeout(() => w.hear('Kant.'), 50); })) });
+  await w.run();
+  assert.equal(w.game.history[0].result, 'power');
+  assert.ok(!w.spoken.some(s => /^I heard: buzz/i.test(s)));
+});
+
+test('"never mind" takes a buzz back: no penalty, and the reading picks up where it stopped', async () => {
+  const w = makeWorld({ questions: [LONG], onMode: chain(onceMode('spot', w => setTimeout(() => w.hear('Buzz.', { dur: 0.01 }), 60)), onceMode('answer', w => w.hear('Never mind.', { dur: 0.7 }))) });
+  await w.run();
+  const rec = w.game.history[0];
+  assert.ok(w.spoken.includes(PHRASES.cancelled));
+  assert.equal(rec.result, 'dead'); assert.equal(rec.points, 0); assert.equal(rec.buzzOffset, null);
+  assert.equal(w.reads.length, 2); assert.ok(w.reads[1].from > 100, `resumed mid-question (${w.reads[1].from})`);
+});
+
+// ---- hearing it again ---------------------------------------------------------------------
+
+test('"what were the earlier clues" starts the question again; "go back" repeats only the last sentence', async () => {
+  const a = makeWorld({ questions: [LONG], onMode: onceMode('spot', w => setTimeout(() => w.hear('What were the earlier clues?', { dur: 0.01 }), 60)) });
+  await a.run();
+  assert.ok(a.spoken.includes(PHRASES.restart)); assert.deepEqual(a.reads.map(r => r.from), [0, 0]);
+  const b = makeWorld({ questions: [LONG], onMode: onceMode('spot', w => setTimeout(() => w.hear('Go back.', { dur: 0.01 }), 150)) });
+  await b.run();
+  assert.ok(!b.spoken.includes(PHRASES.restart));
+  assert.equal(b.reads.length, 2);
+  const starts = prepareTossup(LONG).chunks.map(c => c.start);
+  assert.ok(b.reads[1].from > 0 && starts.includes(b.reads[1].from), `restarted at the start of a sentence (${b.reads[1].from})`);
+  assert.equal(b.game.history[0].result, 'dead');
+});
+
+test('bonus: "repeat the question" reads the part again from its start', async () => {
+  const w = makeWorld({ questions: [BONUS], rules: { bonusDirectAnswer: false }, onState: (s, extra, w) => { if (s === 'reading' && extra.part === 0 && !w.asked) { w.asked = true; setTimeout(() => w.hear('Repeat the question.', { dur: 0.01 }), 15); } } });
+  await w.run();
+  assert.equal(w.reads.filter(r => r.first.startsWith('In this work, David Hume')).length, 2);
+  assert.deepEqual(w.game.history[0].parts.map(p => p.result), ['none', 'none', 'none']);
+});
+
+// ---- the assistant ------------------------------------------------------------------------
+
+test('built-in requests: the last answer, its spelling, the score, and what this question is', async () => {
+  assert.equal(spellOut('Kant'), 'K, A, N, T');
+  assert.equal(spellOut('Søren Kierkegaard'), 'Soren: S, O, R, E, N. Kierkegaard: K, I, E, R, K, E, G, A, A, R, D');
+  const w = makeWorld({
+    questions: [KANT, { ...MILL, set: { name: 'ACF Regionals' }, subcategory: 'Philosophy', difficulty: 8 }], rules: { betweenSec: 0.3, mode: 'tossups' },
+    onMode: chain(onceMode('spot', w => w.hear('Buzz.')), onceMode('answer', w => w.hear('Kant'))),
+    onState: (s, e, w) => {
+      if (s === 'between' && !w.a) { w.a = true; setTimeout(() => w.hear('What was the answer?', { dur: 0.9 }), 5); setTimeout(() => w.hear('Spell that.', { dur: 0.6 }), 40); setTimeout(() => w.hear("What's my score?", { dur: 0.8 }), 80); }
+      if (s === 'reading' && w.a && !w.b) { w.b = true; setTimeout(() => w.hear('What set is this from?', { dur: 0.01 }), 5); setTimeout(() => w.hear('What was the answer?', { dur: 0.01 }), 30); }
+    }
+  });
+  await w.run();
+  assert.ok(w.spoken.includes('The answer was Immanuel Kant.'), w.spoken.join(' | '));
+  assert.ok(w.spoken.includes('Immanuel Kant. Spelled: Immanuel: I, M, M, A, N, U, E, L. Kant: K, A, N, T.'), w.spoken.join(' | '));
+  assert.ok(w.spoken.includes('15 points. 1 of 1 tossups, 1 for power.'), w.spoken.join(' | '));
+  assert.ok(w.spoken.includes('This is a tossup on Philosophy, from ACF Regionals, Regionals College level.'), w.spoken.join(' | '));
+  assert.ok(w.spoken.includes('The last answer was Immanuel Kant.'), 'during a live question only an earlier answer is given');
+  assert.equal(w.game.history[1].result, 'dead', 'the second question carried on to its end');
+});
+
+test('built-in requests: the answer to a question still in play is never given', async () => {
+  const w = makeWorld({ questions: [LONG], onMode: onceMode('spot', w => setTimeout(() => w.hear('What is the answer?', { dur: 0.01 }), 30)) });
+  await w.run();
+  assert.ok(w.spoken.includes(PHRASES.notYet));
+  assert.equal(w.spoken.filter(s => /Immanuel Kant/.test(s)).length, 1, 'only the reveal at the end names it');
+});
+
+test('assistant: "Moderator, ..." is put to the assistant with the quiz as context, and the question carries on', async () => {
+  const calls = [];
+  const assistant = { available: () => true, ask: async ({ text, context, talk, say }) => { calls.push({ text, context: JSON.parse(JSON.stringify(context)), talk: talk.length }); say('Hume argued that causation is only habit.'); say('Kant answered him.'); return {}; } };
+  const w = makeWorld({ questions: [LONG], assistant, onMode: onceMode('spot', w => setTimeout(() => { w.hear('', { type: 'speechstart' }); setTimeout(() => w.hear('Moderator, who was David Hume?', { dur: 0.02 }), 10); }, 50)) });
+  await w.run();
+  assert.equal(calls.length, 1); assert.equal(calls[0].text, 'who was david hume');
+  const c = calls[0].context.current;
+  assert.equal(c.type, 'tossup'); assert.equal(c.live, true);
+  assert.ok(c.readSoFar.length > 20 && c.readSoFar.length < prepareTossup(LONG).text.length, 'only what has been read so far is passed on');
+  assert.equal(JSON.stringify(calls[0].context).includes('Immanuel Kant'), false, 'the answer to the live question is withheld from the assistant');
+  assert.ok(w.spoken.includes('Hume argued that causation is only habit.') && w.spoken.includes('Kant answered him.'));
+  assert.ok(w.states.includes('assistant'));
+  assert.equal(w.game.history[0].result, 'dead', 'the reading resumed and finished');
+  assert.equal(w.reads.length, 1);
+});
+
+test('assistant: the wake word alone opens the floor; a follow-up needs no wake word; "thanks" ends it', async () => {
+  const asked = [];
+  const assistant = { available: () => true, ask: async ({ text, talk, say }) => { asked.push([text, talk.length]); say('Answer to ' + text + '.'); return {}; } };
+  const w = makeWorld({
+    questions: [LONG], assistant, rules: { followUpSec: 0.4, answerStartSec: 0.4 },
+    onMode: onceMode('spot', w => setTimeout(() => w.hear('Moderator.', { dur: 0.01 }), 40)),
+    onState: (s, e, w) => {
+      if (s !== 'asking') return;
+      w.n = (w.n || 0) + 1;
+      if (w.n === 1) setTimeout(() => w.hear('What is the categorical imperative?', { dur: 1.5 }), 10);
+      if (w.n === 2) setTimeout(() => w.hear('And who opposed it?', { dur: 1 }), 10);
+      if (w.n === 3) setTimeout(() => w.hear('Thanks.', { dur: 0.4 }), 10);
+    }
+  });
+  await w.run();
+  assert.deepEqual(asked, [['What is the categorical imperative?', 0], ['And who opposed it?', 2]]);
+  assert.ok(w.tones.includes('listen'));
+  assert.equal(w.game.history[0].result, 'dead');
+});
+
+test('assistant: what it asks the quiz to do is done (repeat, skip), and "Moderator, skip" needs no model', async () => {
+  const assistant = { available: () => true, ask: async ({ text, say }) => { say('Sure.'); return { action: /again/.test(text) ? 'repeat' : 'skip' }; } };
+  const a = makeWorld({ questions: [LONG], assistant, onMode: onceMode('spot', w => setTimeout(() => w.hear('Moderator, read that again from the top please.', { dur: 0.01 }), 60)) });
+  await a.run();
+  assert.deepEqual(a.reads.map(r => r.from), [0, 0]); assert.equal(a.game.history[0].result, 'dead');
+  const b = makeWorld({ questions: [LONG], assistant, onMode: onceMode('spot', w => setTimeout(() => w.hear('Computer, I give up on this one.', { dur: 0.01 }), 30)) });
+  await b.run();
+  assert.equal(b.game.history[0].result, 'skipped');
+  let called = 0;
+  const c = makeWorld({ questions: [LONG], assistant: { available: () => true, ask: async () => { called++; return {}; } }, onMode: onceMode('spot', w => setTimeout(() => w.hear('Moderator, skip.', { dur: 0.01 }), 30)) });
+  await c.run();
+  assert.equal(c.game.history[0].result, 'skipped'); assert.equal(called, 0);
+});
+
+test('assistant: without a key it says so; a failure is spoken and the quiz goes on; free questions need a key', async () => {
+  const none = makeWorld({ questions: [LONG], onMode: onceMode('spot', w => setTimeout(() => w.hear('Moderator, who was Hume?', { dur: 0.01 }), 30)) });
+  await none.run();
+  assert.ok(none.spoken.includes(PHRASES.needKey)); assert.equal(none.game.history[0].result, 'dead');
+  const broken = makeWorld({ questions: [LONG], assistant: { available: () => true, ask: async () => { throw Object.assign(new Error('HTTP 529'), { spoken: 'The assistant is busy. Try again in a moment.' }); } }, onMode: onceMode('spot', w => setTimeout(() => w.hear('Moderator, who was Hume?', { dur: 0.01 }), 30)) });
+  await broken.run();
+  assert.ok(broken.spoken.includes('The assistant is busy. Try again in a moment.')); assert.equal(broken.game.history[0].result, 'dead');
+  // Between questions a question needs no wake word, but only when there is an assistant to ask.
+  let asked = 0;
+  const between = assistant => makeWorld({ questions: [KANT, MILL], assistant, rules: { betweenSec: 0.2, mode: 'tossups' }, onState: (s, e, w) => { if (s === 'between' && !w.a) { w.a = true; setTimeout(() => w.hear('Why is that the answer?', { dur: 1 }), 5); } } });
+  const withKey = between({ available: () => true, ask: async ({ say }) => { asked++; say('Because.'); return {}; } });
+  await withKey.run();
+  assert.equal(asked, 1);
+  const without = between(undefined);
+  await without.run();
+  assert.ok(!without.spoken.includes(PHRASES.needKey), 'no nagging about a key for idle talk');
+});
+
+test('assistant: its own voice coming back is not taken for a request, and "stop" cuts it short', async () => {
+  let resolveAsk;
+  const assistant = { available: () => true, ask: ({ say }) => new Promise(resolve => { say('The moderator reads the question aloud.'); resolveAsk = resolve; }) };
+  const w = makeWorld({ questions: [LONG], assistant, onMode: onceMode('spot', w => setTimeout(() => w.hear('Moderator, what does a moderator do?', { dur: 0.01 }), 30)) });
+  const done = w.run();
+  await sleep(120);
+  w.hear('moderator reads the question aloud', { dur: 1 });   // echo: ignored
+  await sleep(30);
+  assert.equal(w.game.state, 'assistant');
+  w.hear('Stop.', { dur: 0.3 });
+  await sleep(30);
+  resolveAsk({});
+  await done;
+  assert.equal(w.game.history[0].result, 'dead');
 });

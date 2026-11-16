@@ -167,6 +167,37 @@ test('command words written by ear are still understood', () => {
   assert.equal(classifyCommand('Bertrand Russell', all), null);
 });
 
+test('requests to hear something again, and things the app can simply tell you', async () => {
+  const { ALL_COMMANDS } = await import('../docs/js/intent.js');
+  const is = (name, list) => { for (const s of list) assert.equal(classifyCommand(s, ALL_COMMANDS), name, s); };
+  is('repeat', ['Repeat the question.', 'Read the question again', 'again', 'Start over', 'from the beginning', 'Read it from the top', 'one more time']);
+  is('clues', ['What were the earlier clues?', 'what were the clues', 'Repeat the clues', 'read the earlier clues again', 'What did I miss?', 'what have you said so far']);
+  is('back', ['Go back.', 'go back a sentence', 'Repeat that', 'Say that again.', 'What was that?', 'Repeat the last sentence', 'back up', 'what did you just say', 'Pardon?']);
+  is('answer', ['What was the answer?', "What's the answer?", 'Whats the answer again', 'Repeat the answer', 'what was that answer', 'Who was that?']);
+  is('spell', ['Spell that.', 'spell it', 'Can you spell that?', 'How do you spell that?', 'how is that spelled']);
+  is('score', ["What's my score?", 'What is the score', 'how am I doing', 'How many points do I have?']);
+  is('where', ['What category is this?', 'What set is this from?', 'what difficulty is this', 'Which tournament is this from?']);
+  is('louder', ['Speak louder', 'volume up', 'Turn it up', 'a bit louder']);
+  is('quieter', ['Turn it down.', 'volume down', 'a little quieter', 'too loud']);
+  is('cancel', ['Never mind.', 'nevermind', 'Cancel that', "I didn't mean to buzz", 'false alarm']);
+  is('help', ['What can I say?']);
+  // Words that turn up in answers are not requests.
+  for (const s of ['The Score', 'Back to Methuselah', 'Immanuel Kant', 'The Answer to Job', 'louder', 'Spellbound', 'A Spell for Chameleon', 'the clue', 'What Is to Be Done?', 'What is metaphysics', 'Who is afraid of Virginia Woolf']) assert.equal(classifyCommand(s, ALL_COMMANDS.filter(c => c !== 'enough')), null, s);
+});
+
+test('wake words and question-like speech', async () => {
+  const { splitWake, looksLikeQuestion, isOnlyBuzz } = await import('../docs/js/intent.js');
+  assert.deepEqual(splitWake('Moderator, who was David Hume?'), { wake: true, rest: 'who was david hume' });
+  assert.deepEqual(splitWake('Hey moderator what were the earlier clues'), { wake: true, rest: 'what were the earlier clues' });
+  assert.deepEqual(splitWake('Computer.'), { wake: true, rest: '' });
+  assert.deepEqual(splitWake('Car bowl, skip this one'), { wake: true, rest: 'skip this one' });
+  assert.deepEqual(splitWake('Moderate her, what is my score'), { wake: true, rest: 'what is my score' }, 'written by ear');
+  for (const s of ['Immanuel Kant', 'Moderation in all things', 'A moderate position', 'The computer science of it', 'Buzz', 'compute', 'What was the answer', '']) assert.equal(splitWake(s).wake, false, s);
+  assert.ok(looksLikeQuestion('Why is that the answer?')); assert.ok(looksLikeQuestion('tell me more about Hume')); assert.ok(looksLikeQuestion('who opposed him'));
+  assert.ok(!looksLikeQuestion('Immanuel Kant')); assert.ok(!looksLikeQuestion('what')); assert.ok(!looksLikeQuestion('the categorical imperative'));
+  assert.ok(isOnlyBuzz('Buzz.')); assert.ok(isOnlyBuzz('buzz buzz')); assert.ok(!isOnlyBuzz('Buzz Aldrin')); assert.ok(!isOnlyBuzz('')); assert.ok(!isOnlyBuzz('Kant'));
+});
+
 test('command leads: first halves of two-word commands, never a buzz word', async () => {
   const { isCommandLead } = await import('../docs/js/intent.js');
   for (const s of ['Read.', 'Raid.', 'Pause.', 'Slow', 'Speed.', 'Hold', 'Wait.', 'Stop.']) assert.ok(isCommandLead(s), s);

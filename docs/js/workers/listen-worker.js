@@ -3,7 +3,8 @@
  * what an utterance means; the game does.
  *
  * Messages in:  { type: 'init', base, manifest, asr: 'moonshine-base' | 'moonshine-tiny', vadThreshold }
- *               { type: 'port', port }                 audio frames { samples: Float32Array, t } arrive on the port
+ *               { type: 'port', port }                 audio frames { samples: Float32Array, t } arrive on the port;
+ *                                                      a later port replaces an earlier one, and null means 'feed'
  *               { type: 'mode', mode: 'off' | 'spot' | 'answer', id, since? }
  *                    spot   = short end-of-speech pause (0.3 s): quick reaction to a single word
  *                    answer = longer pause (0.8 s): lets a spoken answer finish
@@ -11,7 +12,7 @@
  *               { type: 'feed', samples, t }            test hook: same as a frame on the port
  *               { type: 'transcribe', id, samples }     one-off transcription (self-tests)
  * Messages out: { type: 'ready', asr, heapMiB, initMs }
- *               { type: 'speechstart', modeId, t }      speech has lasted about a quarter second
+ *               { type: 'speechstart', modeId, t }      speech has lasted about a sixth of a second
  *               { type: 'speechend', modeId, t, dropped }
  *               { type: 'utterance', modeId, text, start, end, dur, level, asrMs, t }
  *               { type: 'level', rms, peak, speaking, t }   about ten times a second
@@ -27,7 +28,7 @@ const WIN = 512;
 const RING = SR * 40;
 const PAD_BEFORE = Math.round(0.25 * SR);
 const PAD_AFTER = Math.round(0.1 * SR);
-const ONSET_WINDOWS = 7; // about 0.22 s of continuous speech before "speechstart" is reported
+const ONSET_WINDOWS = 5; // about 0.16 s of continuous speech before "speechstart" is reported (the reader stops on it)
 
 let runtime = null;
 let rec = null;
@@ -45,6 +46,7 @@ let detectedRun = 0;
 let reportedStart = false;
 let levelAcc = 0; let levelPeak = 0; let levelN = 0;
 let busy = false;            // true while a transcription blocks the thread; frames queue up meanwhile
+let activePort = null;       // the one channel microphone frames are accepted from
 
 const post = (msg, transfer) => self.postMessage(msg, transfer || []);
 const log = text => post({ type: 'log', text });
@@ -172,8 +174,10 @@ self.onmessage = e => {
   const m = e.data;
   switch (m.type) {
     case 'init': init(m).catch(err => post({ type: 'error', error: describeError(err, runtime), fatal: true })); break;
-    case 'port': m.port.onmessage = ev => onFrame(ev.data.samples, ev.data.t); break;
-    case 'feed': onFrame(m.samples, m.t); break;
+    // Only the newest channel is listened to: when the microphone path is rebuilt, a late frame from
+    // the old one must not be mixed in with the new one's. A null port means "frames come by 'feed'".
+    case 'port': { const port = m.port; activePort = port; if (port) port.onmessage = ev => { if (port === activePort && ev.data && ev.data.samples) onFrame(ev.data.samples, ev.data.t); }; break; }
+    case 'feed': if (!activePort) onFrame(m.samples, m.t); break;
     case 'mode': try { setMode(m); } catch (err) { post({ type: 'error', error: describeError(err, runtime) }); } break;
     case 'transcribe': {
       const t0 = performance.now();

@@ -140,3 +140,41 @@ test('safeAnswerHtml keeps emphasis marks and escapes everything else', () => {
 test('wordsOf normalises for echo comparison', () => {
   assert.deepEqual(wordsOf('Søren Kierkegaard’s "Either/Or"!'), ['soren', 'kierkegaards', 'either', 'or']);
 });
+
+test('math and programming notation is read the way a moderator would say it', () => {
+  const say = s => cleanForSpeech(s).text;
+  assert.equal(say('It is represented in the plane as x2+ y2= 1.'), 'It is represented in the plane as x squared plus y squared equals 1.');
+  assert.equal(say('given by the equation: x2 + y2 = r2.'), 'given by the equation: x squared plus y squared equals r squared.');
+  assert.equal(say('an automaton with 2^n states'), 'an automaton with 2 to the n states');
+  assert.equal(say('the function e^x and the curve x^2 and its inverse f^-1'), 'the function e to the x and the curve x squared and its inverse f inverse');
+  assert.equal(say('the n+1 iteration, and x +1 sets'), 'the n plus 1 iteration, and x plus 1 sets');
+  assert.equal(say('Kruskal runs in O(E logE) or O(E logV) time'), 'Kruskal runs in O of E log E or O of E log V time');
+  assert.equal(say('where f(x) is continuous'), 'where f of x is continuous');
+  assert.equal(say('an extension of C++ called Charm++, unlike C# or F#'), 'an extension of C plus plus called Charm plus plus, unlike C sharp or F sharp');
+  assert.equal(say('the A* search algorithm'), 'the A star search algorithm');
+  assert.equal(say('the instructions test_and_set and compare_and_swap'), 'the instructions test and set and compare and swap');
+  assert.equal(say('with real part between ½ and 1'), 'with real part between one half and 1');
+  assert.equal(say('probability greater than or equal to 1/2'), 'probability greater than or equal to one half');
+  assert.equal(say('Bessel functions written Jα'), 'Bessel functions written J alpha');
+  assert.equal(say('solutions to Ax = 0 where x ≠ 0'), 'solutions to Ax equals 0 where x not equal to 0');
+  assert.equal(say('if x < y and y > z'), 'if x less than y and y greater than z');
+  assert.equal(say('"O Superman" hit #2 on the chart'), '"O Superman" hit number 2 on the chart');
+  // The power mark survives all of this, and ordinary prose is untouched.
+  const p = cleanForSpeech('This language extends C++ with (*) templates. For 10 points, name it.');
+  assert.equal(p.text, 'This language extends C plus plus with templates. For 10 points, name it.');
+  assert.equal(p.text.slice(p.powerOffset), 'templates. For 10 points, name it.');
+  for (const s of ['He wrote the Critique of Pure Reason in 1781.', 'the attacks of 9/11 and the score was 3-2', 'A & B, the so-called "A-series"', 'Plato (c. 428-348 BC) taught Aristotle.']) assert.equal(say(s), s.replace(' & ', ' and '), s);
+  assert.equal(mainAnswer('C++ [or C plus plus]'), 'C plus plus');
+  assert.equal(mainAnswer('O(n log n) [accept n log n]'), 'O of n log n');
+  assert.equal(mainAnswer('Immanuel Kant'), 'Immanuel Kant');
+});
+
+test('an answer line is split into the answer and the notes on what else is accepted', async () => {
+  const { splitAnswerHtml } = await import('../docs/js/speechtext.js');
+  assert.deepEqual(splitAnswerHtml('Immanuel <b><u>Kant</u></b> [accept <u>Critique of Pure Reason</u>; prompt on <u>first Critique</u>]'), { main: 'Immanuel <b><u>Kant</u></b>', notes: 'accept <u>Critique of Pure Reason</u>; prompt on <u>first Critique</u>' });
+  assert.deepEqual(splitAnswerHtml('<b><u>Being and Time</u></b>'), { main: '<b><u>Being and Time</u></b>', notes: '' });
+  assert.deepEqual(splitAnswerHtml('<b><u>two</u></b> [or <b><u>2</u></b>] [accept either]'), { main: '<b><u>two</u></b>', notes: '[or <b><u>2</u></b>] [accept either]' });
+  assert.deepEqual(splitAnswerHtml('[accept either] <b><u>Hesperus</u></b> or <b><u>Phosphorus</u></b>'), { main: '[accept either] <b><u>Hesperus</u></b> or <b><u>Phosphorus</u></b>', notes: '' }, 'a leading bracket is part of the answer');
+  assert.equal(splitAnswerHtml('<img src=x onerror=alert(1)> Kant [or <script>x</script>]').notes, 'or &lt;script&gt;x&lt;/script&gt;', 'still escaped');
+  assert.deepEqual(splitAnswerHtml(''), { main: '', notes: '' });
+});

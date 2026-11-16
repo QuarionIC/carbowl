@@ -200,6 +200,9 @@ export class ListenClient extends WorkerClient {
     return ch.port2;
   }
 
+  /** Stops listening to any microphone channel; frames are then taken from feed() (the scripted microphone of the self-tests). */
+  detachPorts () { this.worker.postMessage({ type: 'port', port: null }); }
+
   /** @param {'off'|'spot'|'answer'} mode  @param {{ since?: number }} [o] re-examine audio from this AudioContext time */
   setMode (mode, { since } = {}) {
     this.modeId++; this.mode = mode;

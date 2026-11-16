@@ -43,7 +43,25 @@ const COMMANDS = [
   { name: 'right', re: /^(?:i was (?:right|correct)|that was (?:right|correct)|that's (?:right|correct)|thats (?:right|correct)|mark (?:it |that )?(?:as )?(?:right|correct)|count (?:it|that)|i got (?:it|that)(?: right)?|i said that|override)$/ },
   { name: 'wrong', re: /^(?:i was wrong|that was wrong|that's wrong|thats wrong|mark (?:it |that )?(?:as )?(?:wrong|incorrect)|i got (?:it|that) wrong|i was incorrect|that was incorrect)$/ },
   { name: 'skip', re: /^(?:skip|skip (?:it|this|that)|skip (?:the |this |that )?question|next|next question|next one|move on)$/ },
-  { name: 'repeat', re: /^(?:repeat|repeat (?:it|that)|repeat (?:the |this |that )?question|say (?:it|that) again|read (?:it|that) again|again|one more time)$/ },
+  // Three ways of asking to hear something again. "repeat": the whole question from the top.
+  // "clues": everything read so far (for a tossup that is the same thing). "back": the last sentence only.
+  { name: 'repeat', re: /^(?:repeat|repeat (?:it|this)|repeat (?:the |this |that )?(?:whole )?question|(?:read|say) (?:it|the question|that question) again|again|one more time|start (?:it |the question |that )?(?:over|again)|(?:read |start )?(?:it |that |the question )?from the (?:beginning|start|top))$/ },
+  { name: 'clues', re: /^(?:what (?:were|are|was) the (?:earlier |first |previous |other |last )?clues?(?: again| so far)?|(?:repeat|read|say|give me) the (?:earlier |first |previous |other )?clues?(?: again)?|(?:the )?earlier clues|what did (?:i|you) (?:miss|say)(?: earlier| before)?|what (?:have you|has been) (?:said|read) so far|(?:go|read) back to the (?:start|beginning))$/ },
+  { name: 'back', re: /^(?:(?:repeat|say|read) (?:that|the last|that last|the previous)(?: sentence| line| clue| part| bit| one)?(?: again)?|go back(?: a (?:sentence|bit|little|clue|line))?|back up(?: a (?:sentence|bit|little))?|what was that(?: last (?:sentence|clue|part|bit))?|what did you (?:just )?say|come again|pardon|pardon me|sorry what)$/ },
+  // Things the app can simply tell you.
+  // (Apostrophes are gone by the time these are matched: "what's" arrives as "whats".)
+  { name: 'answer', re: /^(?:what(?:s| is| was) the (?:last |previous |correct |right )?answer(?: again| to that(?: one)?)?|(?:repeat|say|read|tell me) the answer(?: again)?|what was that answer|the answer again|what was (?:it|that) again|who was (?:it|that)(?: again)?)$/ },
+  { name: 'spell', re: /^(?:(?:can you |could you |please )?spell (?:it|that|the answer|that answer)(?: out)?(?: for me)?|how (?:do you|do i|would you) spell (?:it|that)|how is (?:it|that) spell(?:ed|t)?)$/ },
+  { name: 'score', re: /^(?:what(?:s| is) (?:my|the) score|my score|score check|how am i doing|how many points(?: do i have)?|how many (?:have i|did i) (?:got|get|gotten)(?: right)?)$/ },
+  { name: 'where', re: /^(?:what (?:category|subject|topic|set|tournament|packet|difficulty|level|year) (?:is|was) (?:this|that|it)(?: from)?|(?:where|what set|which set|which tournament|what tournament) (?:is|was) (?:this|that|it)(?: question)? from)$/ },
+  { name: 'help', re: /^(?:what can i say|what are the commands|list (?:the )?commands|what commands are there)$/ },
+  // Volume. Two words, like the speed commands.
+  { name: 'louder', re: /^(?:(?:speak|talk|read|be|go) (?:a (?:bit|little) )?louder|(?:turn )?(?:it |the )?volume up|turn (?:it|that) up|(?:a (?:bit|little)|much) louder|speak up)$/ },
+  { name: 'quieter', re: /^(?:(?:speak|talk|read|be) (?:a (?:bit|little) )?(?:quieter|softer)|(?:turn )?(?:it |the )?volume down|turn (?:it|that) down|(?:a (?:bit|little)|much) (?:quieter|softer)|not so loud|too loud)$/ },
+  // Taking back a buzz that was not meant.
+  { name: 'cancel', re: /^(?:never ?mind|cancel|cancel (?:that|it|the buzz|my buzz)|i take (?:it|that) back|withdraw|scratch that|false alarm|i did(?:nt| not) (?:buzz|mean to(?: buzz)?)|did(?:nt| not) mean to(?: buzz)?|no buzz|not a buzz)$/ },
+  // Cutting the assistant short.
+  { name: 'enough', re: /^(?:stop|okay|ok|thanks|thank you|thats enough|that is enough|enough|got it|i got it|all right|alright|okay thanks|ok thanks|okay thank you)$/ },
   // Two words on purpose: a lone "pause" is too easily a misheard "buzz".
   { name: 'pause', re: /^(?:pause (?:the |this )?(?:quiz|game|reading|question)|stop (?:the |this )?(?:quiz|game|reading)|hold on|wait a (?:second|minute|moment|sec))$/ },
   { name: 'resume', re: /^(?:resume|resume (?:the )?(?:quiz|game|reading)|continue|keep going|go on|go ahead|start|unpause|carry on|play)$/ },
@@ -56,7 +74,8 @@ export const ALL_COMMANDS = COMMANDS.map(c => c.name);
 
 // Command words of four letters or more. A recogniser often writes one of these by ear ("raid
 // faster", "paws quiz", "I was write"), so heard words are snapped to the command word they sound like.
-const COMMAND_WORDS = ['read', 'talk', 'speak', 'faster', 'slower', 'speed', 'slow', 'down', 'pause', 'quiz', 'game', 'reading', 'question', 'stop', 'hold', 'wait', 'second', 'minute', 'moment', 'skip', 'next', 'repeat', 'again', 'resume', 'continue', 'right', 'wrong', 'correct', 'incorrect', 'mark', 'going', 'keep', 'carry', 'start', 'play', 'more', 'time', 'little', 'much', 'move', 'that', 'this'];
+const COMMAND_WORDS = ['read', 'talk', 'speak', 'faster', 'slower', 'speed', 'slow', 'down', 'pause', 'quiz', 'game', 'reading', 'question', 'stop', 'hold', 'wait', 'second', 'minute', 'moment', 'skip', 'next', 'repeat', 'again', 'resume', 'continue', 'right', 'wrong', 'correct', 'incorrect', 'mark', 'going', 'keep', 'carry', 'start', 'play', 'more', 'time', 'little', 'much', 'move', 'that', 'this',
+  'clues', 'clue', 'earlier', 'answer', 'spell', 'score', 'louder', 'quieter', 'softer', 'volume', 'beginning', 'sentence', 'cancel', 'never', 'mind', 'back', 'what', 'were', 'last'];
 const COMMAND_WORD_SET = new Set(COMMAND_WORDS);
 const alikeCache = new Map();
 /**
@@ -73,7 +92,8 @@ function soundAlikes (w) {
       if (s >= 0.85) found.push([s + 0.01 * stringSimilarity(w, c), c]);
     }
     found.sort((a, b) => b[0] - a[0]);
-    hit = found.length ? found.slice(0, 3).map(f => f[1]) : [w];
+    // The word as heard stays in the running too: "doing" sounds like "down" but may simply be "doing".
+    hit = found.length ? [...found.slice(0, 3).map(f => f[1]), w] : [w];
     if (alikeCache.size > 2000) alikeCache.clear();
     alikeCache.set(w, hit);
   }
@@ -117,6 +137,43 @@ export function isCommandLead (text) {
   const raw = wordsOf(text);
   if (raw.length !== 1 || isBuzzLike(raw[0])) return false;
   return soundAlikes(raw[0]).some(w => COMMAND_LEADS.has(w));
+}
+
+// Words that address the assistant. Chosen to be long, distinctive and unlikely in an answer.
+const WAKE_WORDS = ['moderator', 'computer', 'carbowl', 'assistant'];
+const WAKE_LEAD_RE = /^(?:hey|hi|okay|ok|oh|so|um|uh|yo|and|excuse|me|dear)$/;
+
+/**
+ * Looks for a word addressing the assistant at the start of what was heard ("Moderator, who wrote
+ * that?"). The recogniser may write it by ear or split it in two ("car bowl").
+ * @returns {{ wake: boolean, rest: string }} rest = the words after the wake word
+ */
+export function splitWake (text) {
+  const raw = wordsOf(text);
+  let i = 0;
+  while (i < raw.length && i < 3 && WAKE_LEAD_RE.test(raw[i])) i++;
+  for (const span of [1, 2]) {
+    if (i + span > raw.length) continue;
+    const cand = raw.slice(i, i + span).join('');
+    if (cand.length < 6 || cand.length > 12) continue;
+    // The same sounds exactly ("moderate her", "car ball"), not merely close ones: "moderation" must not wake it.
+    if (WAKE_WORDS.some(w => cand === w || soundSimilarity(cand, w).score >= 0.99)) return { wake: true, rest: raw.slice(i + span).join(' ') };
+  }
+  return { wake: false, rest: raw.join(' ') };
+}
+
+const ASKING_RE = /^(?:who|whom|whose|what|whats|when|where|why|how|which|can|could|would|will|is|was|are|were|did|does|do|tell|explain|give|define|describe|remind|summari[sz]e|say|name|list|compare)\b/;
+
+/** True when the words read as a question or a request rather than an answer or a remark. */
+export function looksLikeQuestion (text) {
+  const w = wordsOf(text);
+  return w.length >= 2 && ASKING_RE.test(w.join(' '));
+}
+
+/** True when the utterance is nothing but the buzz word, perhaps repeated ("buzz", "buzz buzz"). */
+export function isOnlyBuzz (text) {
+  const w = wordsOf(text);
+  return w.length > 0 && w.length <= 3 && w.every(isBuzzLike);
 }
 
 /**

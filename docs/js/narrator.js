@@ -2,7 +2,7 @@
 // sentence, keeping track of exactly which character is being spoken at any moment (needed to
 // know where a buzz landed, and to resume after an interruption).
 
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+import { sleep } from './clock.js';
 
 export class Narrator {
   /**
@@ -99,6 +99,51 @@ export class Narrator {
   }
 
   /**
+   * Speaks sentences as they are handed over, one after another, so that an answer can start
+   * being heard while the rest of it is still being written. A paused reading stays paused underneath.
+   * @returns {{ push: (text: string) => void, end: () => void, stop: () => void, finish: () => Promise<'ended'|'stopped'> }}
+   */
+  speakStream ({ group = '', gap = 0.06 } = {}) {
+    const n = this;
+    const under = this.current && this.current.kind === 'reading' && this.current.state === 'paused' ? this.current : null;
+    if (this.current && !under) this.current.stop();
+    const queue = []; let ended = false; let stopped = false; let wake = null; let handle = null; let nextStart = 0;
+    let settle; const done = new Promise(resolve => { settle = resolve; });
+    const nudge = () => { if (wake) { const w = wake; wake = null; w(); } };
+    const me = {
+      kind: 'stream', state: 'speaking',
+      push (text) {
+        if (stopped || ended || !text) return;
+        const audio = n.synth(text, { priority: 1, group, kind: 'phrase' });
+        audio.catch(() => {});
+        queue.push({ text, audio });
+        nudge();
+      },
+      end () { ended = true; nudge(); },
+      stop () { if (stopped) return; stopped = true; if (handle) handle.stop(); n.cancelGroup(group); nudge(); },
+      finish: () => done
+    };
+    this.current = me;
+    (async () => {
+      while (!stopped) {
+        if (!queue.length) { if (ended) break; await new Promise(resolve => { wake = resolve; }); continue; }
+        const item = queue.shift();
+        let audio;
+        try { audio = await item.audio; } catch (e) { if (!stopped) n.log(`speech failed for "${item.text.slice(0, 40)}": ${e.message}`); continue; }
+        if (stopped) break;
+        handle = n.audio.play(audio.samples, audio.sampleRate, { when: Math.max(n.audio.time + 0.02, nextStart) });
+        const h = handle;
+        await h.ended;
+        nextStart = h.endAt + gap; handle = null;
+      }
+      me.state = stopped ? 'stopped' : 'finished';
+      if (n.current === me) n.current = under && under.state !== 'stopped' && under.state !== 'finished' ? under : null;
+      settle(stopped ? 'stopped' : 'ended');
+    })();
+    return me;
+  }
+
+  /**
    * Reads chunks in order.
    * @param {{ text: string, start: number, end: number }[]} chunks
    * @param {{ group?: string, gap?: number, lookahead?: number, onProgress?: (offset: number) => void, from?: number }} [o]
@@ -132,6 +177,7 @@ export class Reading {
     this.startOffset = from;
     this._wake = null;
     this.done = this._run().catch(e => { this.n.log('reader error: ' + (e && e.message)); this.state = 'stopped'; return 'stopped'; });
+    // Progress on screen. Only the display depends on it, so the page's own (throttled when hidden) timer will do.
     this._ticker = setInterval(() => { if (this.onProgress && this.state === 'reading') this.onProgress(this.position()); }, 120);
     this.done.then(() => clearInterval(this._ticker));
   }

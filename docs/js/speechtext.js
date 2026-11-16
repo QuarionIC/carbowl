@@ -45,13 +45,46 @@ export function isReaderNote (inner, bracketed = false) {
   return words.length <= 6 && hasHyphen && (capsRun || bracketed);
 }
 
+const GREEK = { α: 'alpha', β: 'beta', γ: 'gamma', δ: 'delta', ε: 'epsilon', ζ: 'zeta', η: 'eta', θ: 'theta', ι: 'iota', κ: 'kappa', λ: 'lambda', μ: 'mu', ν: 'nu', ξ: 'xi', π: 'pi', ρ: 'rho', σ: 'sigma', ς: 'sigma', τ: 'tau', υ: 'upsilon', φ: 'phi', χ: 'chi', ψ: 'psi', ω: 'omega', Γ: 'gamma', Δ: 'delta', Θ: 'theta', Λ: 'lambda', Ξ: 'xi', Π: 'pi', Σ: 'sigma', Φ: 'phi', Ψ: 'psi', Ω: 'omega' };
+const SYMBOLS = { '½': ' one half ', '⅓': ' one third ', '⅔': ' two thirds ', '¼': ' one quarter ', '¾': ' three quarters ', '²': ' squared ', '³': ' cubed ', '×': ' times ', '÷': ' divided by ', '≤': ' less than or equal to ', '≥': ' greater than or equal to ', '≠': ' not equal to ', '≈': ' approximately ', '±': ' plus or minus ', '∞': ' infinity ', '√': ' square root of ', '∑': ' sum ', '∫': ' integral ', '∈': ' in ', '∪': ' union ', '∩': ' intersect ', '→': ' to ', '↔': ' if and only if ', '°': ' degrees ', '∂': ' partial ', '∇': ' del ', '⊕': ' direct sum ', '⊗': ' tensor ', '·': ' ' };
+const SIMPLE_FRACTIONS = { '1/2': 'one half', '1/3': 'one third', '2/3': 'two thirds', '1/4': 'one quarter', '3/4': 'three quarters' };
+const POWER_WORD = { 2: ' squared', 3: ' cubed' };
+
+/**
+ * Math and programming notation, written the way a moderator would say it: "2^n" as "2 to the n",
+ * "C++" as "C plus plus", "O(n log n)" as "O of n log n". Ordinary prose passes through untouched.
+ */
+export function notationForSpeech (t) {
+  // Names of languages and algorithms first, before "+", "#" and "*" are read as operators.
+  t = t.replace(/\b([A-Za-z][A-Za-z0-9]*)\+\+/g, '$1 plus plus').replace(/\b([A-GJ])#/g, '$1 sharp').replace(/#([A-Z])\b/g, 'sharp $1').replace(/\bA\*/g, 'A star');
+  t = t.replace(/#\s?(\d)/g, 'number $1');
+  // Powers: an explicit caret, or a flattened superscript next to an operator ("x2 + y2 = r2").
+  t = t.replace(/([A-Za-z0-9)])\^\(?(-?[A-Za-z0-9]+(?:[+-][A-Za-z0-9]+)?)\)?/g, (m, base, exp) => base + (POWER_WORD[exp] || (exp === '-1' ? ' inverse' : ' to the ' + exp.replace(/^-/, 'minus '))));
+  t = t.replace(/\b([a-z])([23])(?=\s*[+=])/g, (m, v, p) => v + POWER_WORD[p]);
+  t = t.replace(/([+=]\s*)([a-z])([23])\b/g, (m, lead, v, p) => lead + v + POWER_WORD[p]);
+  // Functions and orders of growth: "O(E logE)" -> "O of E log E", "f(x)" -> "f of x".
+  t = t.replace(/\b([OΘΩ])\(([^()]{1,40})\)/g, (m, f, inner) => `${GREEK[f] ? 'big ' + GREEK[f] : 'O'} of ${inner.replace(/log(?=[A-Za-z0-9])/g, 'log ')}`);
+  t = t.replace(/\b([fghFGPT])\(([a-z](?:, ?[a-z])*)\)/g, (m, f, args) => `${f} of ${args.replace(/, ?/g, ' and ')}`);
+  // Identifiers written with underscores are read as their words.
+  t = t.replace(/([A-Za-z0-9])_(?=[A-Za-z0-9])/g, '$1 ');
+  t = t.replace(/\b(\d)\/(\d)\b(?![/\d])/g, m => SIMPLE_FRACTIONS[m] || m);
+  // Operators between terms. A "+" inside a name was handled above; "=" has no other use in prose.
+  t = t.replace(/([A-Za-z0-9)])\s*\+\s*(?=[A-Za-z0-9(])/g, '$1 plus ');
+  t = t.replace(/\s*=\s*/g, ' equals ');
+  t = t.replace(/(\S)\s+<\s+(?=\S)/g, '$1 less than ').replace(/(\S)\s+>\s+(?=\S)/g, '$1 greater than ');
+  t = t.replace(/[½⅓⅔¼¾²³×÷≤≥≠≈±∞√∑∫∈∪∩→↔°∂∇⊕⊗·]/g, ch => SYMBOLS[ch]);
+  t = t.replace(/[α-ωΓΔΘΛΞΠΣΦΨΩ]/g, ch => ` ${GREEK[ch] || ''} `);
+  return t;
+}
+
 /**
  * Cleans raw (sanitized) question text for speech and display.
  * @returns {{ text: string, powerOffset: number }} powerOffset is the character offset of the power
  *   mark "(*)" in the cleaned text, or -1 when the question has none.
  */
 export function cleanForSpeech (raw) {
-  let t = decodeEntities(String(raw == null ? '' : raw).replace(/<[^>]*>/g, ''));
+  // Tags only: a bare "<" in "x < y" is not the start of one.
+  let t = decodeEntities(String(raw == null ? '' : raw).replace(/<\/?[A-Za-z][^<>]*>/g, ''));
   t = t.replace(/[“”„‟″«»]/g, '"').replace(/[‘’‚‛′]/g, "'");
   t = t.replace(/[  -   　]/g, ' ').replace(/[​-‍﻿]/g, '');
   // Power marks: "(*)" is the standard one; "(+)" marks a superpower in a few sets.
@@ -75,6 +108,7 @@ export function cleanForSpeech (raw) {
   t = t.replace(/…/g, '...');
   t = t.replace(/_{2,}/g, ' blank ');
   t = t.replace(/\s*&\s*/g, ' and ');
+  t = notationForSpeech(t);
   // Whitespace and punctuation tidy-up.
   t = t.replace(/\s+/g, ' ').replace(/ ([,.;:!?])/g, '$1').replace(/,(\s*,)+/g, ',').replace(/\( /g, '(').replace(/ \)/g, ')').trim();
   let powerOffset = t.indexOf(POWER_SENTINEL);
@@ -177,6 +211,8 @@ export function mainAnswer (answerSanitized) {
   const bracket = t.indexOf('[');
   if (bracket > 0) t = t.slice(0, bracket).trim();
   else if (bracket === 0) t = t.replace(/[\[\]]/g, ' ').trim();
+  // Said aloud, "C++" is "C plus plus" and "O(n log n)" is "O of n log n" (before parentheses are dealt with below).
+  t = notationForSpeech(t);
   // Parentheses: an optional leading part is spoken ("(first-order) logic"); a directive, a pronunciation
   // guide, or a trailing remark is not; an optional middle name ("Alvin (Ira) Goldman") is dropped.
   t = t.replace(/^\(([^)]*)\)\s*(?=\S)/, (m, inner) => /^(accept|or|prompt|do not|reject)\b/i.test(inner.trim()) ? '' : inner.trim() + ' ');
@@ -191,6 +227,29 @@ export function safeAnswerHtml (answerHtml) {
   const esc = String(answerHtml == null ? '' : answerHtml)
     .replace(/&(?!(?:#x?[0-9a-f]+|[a-z]+);)/gi, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   return esc.replace(/&lt;(\/?)(b|u|i|em|strong)&gt;/gi, (m, slash, tag) => `<${slash}${tag.toLowerCase()}>`);
+}
+
+/**
+ * Splits an answer line for display: the answer itself, and the bracketed notes that follow it
+ * (what else is accepted or prompted). Both are safe HTML.
+ * @returns {{ main: string, notes: string }}
+ */
+export function splitAnswerHtml (answerHtml) {
+  const safe = safeAnswerHtml(answerHtml).trim();
+  let inTag = false; let cut = -1; let seenText = false;
+  for (let i = 0; i < safe.length; i++) {
+    const ch = safe[i];
+    if (ch === '<') { inTag = true; continue; }
+    if (ch === '>') { inTag = false; continue; }
+    if (inTag) continue;
+    if (ch === '[' && seenText) { cut = i; break; }
+    if (/\S/.test(ch)) seenText = true;
+  }
+  if (cut < 0) return { main: safe, notes: '' };
+  let notes = safe.slice(cut).trim();
+  // One bracketed group loses its brackets; several groups are left as written.
+  if (notes.startsWith('[') && notes.indexOf('[', 1) < 0) notes = notes.slice(1).replace(/\]((?:\s*<\/[a-z]+>)*)\s*$/, '$1');
+  return { main: safe.slice(0, cut).trim(), notes: notes.trim() };
 }
 
 export function escapeHtml (s) {

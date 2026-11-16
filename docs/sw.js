@@ -5,7 +5,7 @@
  * - Everything else (QBReader, fonts): untouched.
  */
 'use strict';
-const SHELL = 'carbowl-shell-v1';
+const SHELL = 'carbowl-shell-v2';
 const MODELS = 'carbowl-models-v1';
 // Model files live in the model cache; the list of them (manifest.json) is part of the app shell.
 const BIG = /\/models\/(?!manifest\.json$)|\.(wasm|data|ort|onnx|bin)(\.part\d+)?$/;

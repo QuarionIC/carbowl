@@ -1,0 +1,964 @@
+{
+ "tossups": [
+  {
+   "_id": "62df87c09bc4e61b2fb37ab3",
+   "question": "Performing this operation on the Riemann zeta function yields the Stieltjes constants. For a static charge distribution, the multipole moments can be found by performing this operation over the potential function in terms of Cartesian coordinates. A second-order approximation of this procedure is used to mathematically prove the small angle approximation. Complex functions are represented with an alternate procedure named for Laurent. The term obtained from the n+1 iteration of this procedure is used to find the R sub n of x, or its remainder. When centered at zero, the Maclaurin series is obtained. For 10 points, name this way to use a function's derivatives to represent it as an infinite sum of terms.",
+   "answer": "<b><u>Taylor expansion</u></b> [or <b><u>Taylor series</u></b>]",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "62df87c09bc4e61b2fb37aa3",
+    "name": "9",
+    "number": 9
+   },
+   "set": {
+    "_id": "62df87c09bc4e61b2fb3774b",
+    "name": "2012 NASAT",
+    "year": 2012,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T05:58:55.263Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Math",
+   "number": 16,
+   "answer_sanitized": "Taylor expansion [or Taylor series]",
+   "question_sanitized": "Performing this operation on the Riemann zeta function yields the Stieltjes constants. For a static charge distribution, the multipole moments can be found by performing this operation over the potential function in terms of Cartesian coordinates. A second-order approximation of this procedure is used to mathematically prove the small angle approximation. Complex functions are represented with an alternate procedure named for Laurent. The term obtained from the n+1 iteration of this procedure is used to find the R sub n of x, or its remainder. When centered at zero, the Maclaurin series is obtained. For 10 points, name this way to use a function's derivatives to represent it as an infinite sum of terms."
+  },
+  {
+   "_id": "6326bf0e692d593d1d7a86ad",
+   "question": "Andrew Gelman and Don Rubin are advocates of the “multistart” technique for using these objects, which contrasts with the “one long run” approach. Algorithms that use Gibbs sampling store samples in one of these objects, from which they may discard data collected during the “burn-in” period. When applied to these objects, the Chapman–Kolmogorov equation reduces to an identity equivalent to matrix multiplication. One of these objects traverses a complicated probability distribution with the aid of an acceptance criterion in the Metropolis–Hastings algorithm. The selection of a future state depends only on the current state in these objects, which consist of a set of states and a list of fixed transition probabilities. For 10 points, identify these memoryless stochastic constructs used in namesake “Monte Carlo” algorithms, which are named for a Russian mathematician.",
+   "answer": "Markov chains [or Markov processes; accept Markov chain Monte Carlo algorithms; prompt on Markov or Markov models; prompt on MC or MCMC or MCMCMC]",
+   "subcategory": "Other Science",
+   "category": "Science",
+   "packet": {
+    "_id": "6326bf0e692d593d1d7a869a",
+    "name": "D. Wright State A + UIUC B + Chicago C",
+    "number": 4
+   },
+   "set": {
+    "_id": "6326bf0e692d593d1d7a861e",
+    "name": "2018 ACF Regionals",
+    "year": 2018,
+    "standard": true
+   },
+   "updatedAt": "2023-09-15T19:31:33.300Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Math",
+   "number": 19,
+   "answer_sanitized": "Markov chains [or Markov processes; accept Markov chain Monte Carlo algorithms; prompt on Markov or Markov models; prompt on MC or MCMC or MCMCMC]",
+   "question_sanitized": "Andrew Gelman and Don Rubin are advocates of the \"multistart\" technique for using these objects, which contrasts with the \"one long run\" approach. Algorithms that use Gibbs sampling store samples in one of these objects, from which they may discard data collected during the \"burn-in\" period. When applied to these objects, the Chapman-Kolmogorov equation reduces to an identity equivalent to matrix multiplication. One of these objects traverses a complicated probability distribution with the aid of an acceptance criterion in the Metropolis-Hastings algorithm. The selection of a future state depends only on the current state in these objects, which consist of a set of states and a list of fixed transition probabilities. For 10 points, identify these memoryless stochastic constructs used in namesake \"Monte Carlo\" algorithms, which are named for a Russian mathematician."
+  },
+  {
+   "_id": "657fd7d8de6df0163bbe3b43",
+   "difficulty": 10,
+   "packet": {
+    "_id": "657fd7d7de6df0163bbe3b42",
+    "name": "2",
+    "number": 2
+   },
+   "set": {
+    "_id": "657fd7d7de6df0163bbe3b2c",
+    "name": "2023 EMACS",
+    "year": 2023,
+    "standard": false
+   },
+   "question": "<b>In May 2023, this library dropped its dependency on the Sizzle engine, which was itself spun out of this library in 2009. Minimalist alternatives to this library include Cash and Zepto. In a 2008 partnership, this library was added to Visual Studio in the first ever instance of Microsoft supporting an open source project. The website “You Might Not Need [this library] dot com” lists short code snippets as alternatives to this library’s features, such as its fadeIn and fadeOut methods for animation. In a one-and-a-half year effort, (*)</b> Bootstrap 5 removed its dependency on this library alongside dropping support for Internet Explorer. This library has declined in popularity since many of its features, like easy DOM manipulation and AJAX requests, now have “vanilla” replacements. For 10 points, a single dollar sign can be used to access most of what library that’s still the most widely deployed JavaScript library in the world?",
+   "answer": "<b><u>jQuery</u></b>",
+   "updatedAt": "2023-12-22T21:10:12.751Z",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "alternate_subcategory": "Computer Science",
+   "number": 1,
+   "answer_sanitized": "jQuery",
+   "question_sanitized": "In May 2023, this library dropped its dependency on the Sizzle engine, which was itself spun out of this library in 2009. Minimalist alternatives to this library include Cash and Zepto. In a 2008 partnership, this library was added to Visual Studio in the first ever instance of Microsoft supporting an open source project. The website \"You Might Not Need [this library] dot com\" lists short code snippets as alternatives to this library's features, such as its fadeIn and fadeOut methods for animation. In a one-and-a-half year effort, (*) Bootstrap 5 removed its dependency on this library alongside dropping support for Internet Explorer. This library has declined in popularity since many of its features, like easy DOM manipulation and AJAX requests, now have \"vanilla\" replacements. For 10 points, a single dollar sign can be used to access most of what library that's still the most widely deployed JavaScript library in the world?"
+  },
+  {
+   "_id": "64046cc6de59b8af97424166",
+   "question": "<b>A flow is the group action of this set on another. A series of algebras over this field are named for Cayley and Dickson. Subsets of this set named for Vitali lack a Lebesgue (luh-BEG) measure. Any order field with the supremum property is isomorphic to this set. A Euclidian space generated by taking the Cartesian (car-TEASE-ee-un) product of this set with itself has the property that each bounded sequence has a convergence subsequence according to the (*)</b> Bolzano-Weierstrass (bowl-ZAHN-oh VIE-er-strahs) Theorem. One method of constructing this set involves selecting a dense subset of them and partitioning it using a Dedekind (DEY-di-kind) cut. A statement that is independent of Z-F-C posits that there is no set whose cardinality is between this one and the integers; that statement is the continuum hypothesis. These numbers can be represented using infinite decimal expansions. For 10 points, name this set of numbers that are indicated by a blackboard R and which have no imaginary part.",
+   "answer": "<b><u>real</u></b> numbers [or the <b><u>reals</u></b>]",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "64046cc6de59b8af97424153",
+    "name": "04",
+    "number": 4
+   },
+   "set": {
+    "_id": "64046cc6de59b8af974240d7",
+    "name": "2015 Penn Bowl",
+    "year": 2015,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.593Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Math",
+   "number": 19,
+   "answer_sanitized": "real numbers [or the reals]",
+   "question_sanitized": "A flow is the group action of this set on another. A series of algebras over this field are named for Cayley and Dickson. Subsets of this set named for Vitali lack a Lebesgue (luh-BEG) measure. Any order field with the supremum property is isomorphic to this set. A Euclidian space generated by taking the Cartesian (car-TEASE-ee-un) product of this set with itself has the property that each bounded sequence has a convergence subsequence according to the (*) Bolzano-Weierstrass (bowl-ZAHN-oh VIE-er-strahs) Theorem. One method of constructing this set involves selecting a dense subset of them and partitioning it using a Dedekind (DEY-di-kind) cut. A statement that is independent of Z-F-C posits that there is no set whose cardinality is between this one and the integers; that statement is the continuum hypothesis. These numbers can be represented using infinite decimal expansions. For 10 points, name this set of numbers that are indicated by a blackboard R and which have no imaginary part."
+  },
+  {
+   "_id": "635b6428d8a170d88c9e6a6e",
+   "question": "Substituting this mathematical object in for the inhomogeneous term in an integrodifferential equation yields the equation satisfied by the associated Green's function. This object is the fundamental example of the class of abstract sequentially continuous linear functionals on non-metric vector spaces of C-infinity-zero functions; such objects are known as singular distributions. Operation of convolution with a sequence approximating this functional converges in distribution to the identity operation. Therefore, the convolution of this object with any function f yield f of zero, a fact known as the sifting property. This distribution can be considered the generalized derivative of the step function. For 10 points, name this mathematical object that can be understood as a spike of unit area, zero width, and infinite height.",
+   "answer": "<b><u>Dirac delta</u></b> function [prompt on <b><u>delta</u></b> function]",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "635b6428d8a170d88c9e6a5e",
+    "name": "Illinois A + USC",
+    "number": 7
+   },
+   "set": {
+    "_id": "635b6428d8a170d88c9e6960",
+    "name": "2010 ACF Regionals",
+    "year": 2010,
+    "standard": true
+   },
+   "updatedAt": "2024-04-01T19:49:07.396Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Math",
+   "number": 16,
+   "answer_sanitized": "Dirac delta function [prompt on delta function]",
+   "question_sanitized": "Substituting this mathematical object in for the inhomogeneous term in an integrodifferential equation yields the equation satisfied by the associated Green's function. This object is the fundamental example of the class of abstract sequentially continuous linear functionals on non-metric vector spaces of C-infinity-zero functions; such objects are known as singular distributions. Operation of convolution with a sequence approximating this functional converges in distribution to the identity operation. Therefore, the convolution of this object with any function f yield f of zero, a fact known as the sifting property. This distribution can be considered the generalized derivative of the step function. For 10 points, name this mathematical object that can be understood as a spike of unit area, zero width, and infinite height."
+  },
+  {
+   "_id": "68846968641a9dc975af8410",
+   "question": "<b>These structures are processed through Google’s Pregel framework. Systems based on these structures may come with tools for triangle counting and include Neo4j. Data is fetched through a query language named for these structures that is sometimes provided by services like GitHub as an alternative to their REST APIs; that language is named “[these structures]-Q-L”. They’re not pages, but the “web” instance of these structures is operated on by (*)</b> PageRank. Within these data structures, the reverse-delete algorithm or Kruskal’s algorithm may be used to locate MSTs. These data structures are traversed during BFS and DFS. Adjacency lists and matrices are often used to encode, for 10 points, what abstract data structures that consist of vertices linked by edges?",
+   "question_sanitized": "These structures are processed through Google's Pregel framework. Systems based on these structures may come with tools for triangle counting and include Neo4j. Data is fetched through a query language named for these structures that is sometimes provided by services like GitHub as an alternative to their REST APIs; that language is named \"[these structures]-Q-L\". They're not pages, but the \"web\" instance of these structures is operated on by (*) PageRank. Within these data structures, the reverse-delete algorithm or Kruskal's algorithm may be used to locate MSTs. These data structures are traversed during BFS and DFS. Adjacency lists and matrices are often used to encode, for 10 points, what abstract data structures that consist of vertices linked by edges?",
+   "answer": "<b><u>graph</u></b>s [accept directed <b><u>graph</u></b>s or undirected <b><u>graph</u></b>s or directed acyclic <b><u>graph</u></b>s; accept <b><u>graph</u></b> databases or <b><u>Graph</u></b>QL or force-directed <b><u>graph</u></b> drawing <b><u>webgraph</u></b>; prompt on <u>GDB</u>s or <u>DAG</u>s; prompt on <u>networks</u> or specific types of networks such as social <u>networks</u>; anti-prompt on <u>tree</u>s]",
+   "answer_sanitized": "graphs [accept directed graphs or undirected graphs or directed acyclic graphs; accept graph databases or GraphQL or force-directed graph drawing webgraph; prompt on GDBs or DAGs; prompt on networks or specific types of networks such as social networks; anti-prompt on trees]",
+   "updatedAt": "2025-07-26T05:36:40.943Z",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "alternate_subcategory": "Computer Science",
+   "number": 6,
+   "difficulty": 7,
+   "packet": {
+    "_id": "68846968641a9dc975af840a",
+    "name": "10",
+    "number": 10
+   },
+   "set": {
+    "_id": "68846958641a9dc975af8298",
+    "name": "2024 PLAYTIME!",
+    "year": 2024,
+    "standard": true
+   }
+  },
+  {
+   "_id": "62ec4057d6777289bcae8a19",
+   "question": "<b>Topological spaces of this name have unique paths formed by lifting. Maps of this name take fibers in a “stack of pancakes” structure to any neighborhood in their base space. For a given shape, the number of open balls in a set of this name increases proportionally to radius raised to minus the Hausdorff dimension. Every point on the circle can be assigned a number because the real line is a “universal” collection of this name for the (*)</b> circle. The ability to refine a collection with this name into a finite subset with the same properties defines a compact space. This name is used for groups of sets whose union contains another set. For 10 points, give this name used for collections of sets that lie over the entirety of another set.",
+   "answer": "<b><u>cover</u></b>s [or <b><u>covering</u></b>; accept <b><u>covering</u></b> spaces, <b><u>covering</u></b> maps, <b><u>covering</u></b> dimension, or finite <b><u>subcover</u></b>s]",
+   "subcategory": "Other Science",
+   "category": "Science",
+   "packet": {
+    "_id": "62ec4057d6777289bcae8a0f",
+    "name": "09",
+    "number": 9
+   },
+   "set": {
+    "_id": "62ec4057d6777289bcae88c6",
+    "name": "2022 WORKSHOP",
+    "year": 2022,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.354Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Math",
+   "number": 10,
+   "answer_sanitized": "covers [or covering; accept covering spaces, covering maps, covering dimension, or finite subcovers]",
+   "question_sanitized": "Topological spaces of this name have unique paths formed by lifting. Maps of this name take fibers in a \"stack of pancakes\" structure to any neighborhood in their base space. For a given shape, the number of open balls in a set of this name increases proportionally to radius raised to minus the Hausdorff dimension. Every point on the circle can be assigned a number because the real line is a \"universal\" collection of this name for the (*) circle. The ability to refine a collection with this name into a finite subset with the same properties defines a compact space. This name is used for groups of sets whose union contains another set. For 10 points, give this name used for collections of sets that lie over the entirety of another set."
+  },
+  {
+   "_id": "68921141d1326c4bb0fc9c3d",
+   "question": "One system that can be used to prove this property involve safety properties and liveness properties, and is called linear temporal logic. This property can be proved using a formal system involving the assignment axiom schema and empty statement axiom schema which uses its namesake triples that consist of a precondition, postcondition and command. Introducing loop invariants is one way to prove this. Proving this property is often done in conjuction with showing that the program terminates. The subject of Hoare logic and formal verification, for 10 points, name this property of computer programs that ensures that the program produces the right output for all input.",
+   "question_sanitized": "One system that can be used to prove this property involve safety properties and liveness properties, and is called linear temporal logic. This property can be proved using a formal system involving the assignment axiom schema and empty statement axiom schema which uses its namesake triples that consist of a precondition, postcondition and command. Introducing loop invariants is one way to prove this. Proving this property is often done in conjuction with showing that the program terminates. The subject of Hoare logic and formal verification, for 10 points, name this property of computer programs that ensures that the program produces the right output for all input.",
+   "answer": "total <u>correct</u>ness [accept equivalents]",
+   "answer_sanitized": "total correctness [accept equivalents]",
+   "updatedAt": "2025-08-05T14:14:18.076Z",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "alternate_subcategory": "Math",
+   "number": 33,
+   "difficulty": 10,
+   "packet": {
+    "_id": "62e35effc080082733afc878",
+    "name": "3",
+    "number": 3
+   },
+   "set": {
+    "_id": "62e35effc080082733afc6c7",
+    "name": "2013 Chicago Open",
+    "year": 2013,
+    "standard": true
+   }
+  },
+  {
+   "_id": "6302ccab3e73f93749c0dfee",
+   "question": "<b>One of these functions named after Niels Abel appears in the solution of a problem that asks for the curve in the vertical plane that starts at a given point and intersects the tau axis. There is an orthonormal set of eigenfunctions and eigenvalues that sums to one of these functions according to Mercer's Theorem. According to a theorem in functional analysis, one of two examples of these functions has a nontrivial solution for every fixed, non-zero complex eigenvalue if a certain symmetric function is integer-valued. In the Fredholm type of these equations, their associated (*)</b> kernel is compact. Boundaries are set to unknown values in the Volterra type of these functions, which are often used to model radiosity and scattering problems since values of interest need to be calculated over a solid angle. For 10 points, name these equations in which variables of interest are expressed as a function of antiderivatives.",
+   "answer": "<b><u>integral</u></b> equations [prompt on <u>integro-differential</u> equations; do not accept or prompt on integrable equations or differential equations]",
+   "subcategory": "Other Science",
+   "category": "Science",
+   "packet": {
+    "_id": "6302ccab3e73f93749c0dfe1",
+    "name": "13",
+    "number": 13
+   },
+   "set": {
+    "_id": "6302ccab3e73f93749c0ddf4",
+    "name": "2017 (This) Tournament is a Crime",
+    "year": 2017,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.475Z",
+   "difficulty": 10,
+   "alternate_subcategory": "Math",
+   "number": 13,
+   "answer_sanitized": "integral equations [prompt on integro-differential equations; do not accept or prompt on integrable equations or differential equations]",
+   "question_sanitized": "One of these functions named after Niels Abel appears in the solution of a problem that asks for the curve in the vertical plane that starts at a given point and intersects the tau axis. There is an orthonormal set of eigenfunctions and eigenvalues that sums to one of these functions according to Mercer's Theorem. According to a theorem in functional analysis, one of two examples of these functions has a nontrivial solution for every fixed, non-zero complex eigenvalue if a certain symmetric function is integer-valued. In the Fredholm type of these equations, their associated (*) kernel is compact. Boundaries are set to unknown values in the Volterra type of these functions, which are often used to model radiosity and scattering problems since values of interest need to be calculated over a solid angle. For 10 points, name these equations in which variables of interest are expressed as a function of antiderivatives."
+  },
+  {
+   "_id": "6aed5158b4785b7a4cbd95a5",
+   "question": "<b>In 2013, Canonical fell twenty million dollars short of their thirty-two million dollar Indiegogo campaign to make an Ubuntu-powered smartphone with this name. A program of this name contains an Easter Egg game called Surf that is reasonably similar to the much earlier game <i>SkiFree</i>. Matt Trifiro and Jacob Smith are co-chairs of an organization called \"State of the [this word]\" that tracks progress on a type of computing described by this adjective. A program of this name had its official name announced at Build 2015, having previously been known as (*)</b> Spartan. The company Swim.AI is one of several startups working on AI algorithms described by this adjective. One software package of this name ditched the Chakra JavaScript engine and other proprietary components for Chromium in 2019. Computing described by this algorithm might run a machine learning algorithm on an Internet of Things device rather than on the cloud. For 10 points, give this word that names Microsoft's successor to Internet Explorer.",
+   "question_sanitized": "In 2013, Canonical fell twenty million dollars short of their thirty-two million dollar Indiegogo campaign to make an Ubuntu-powered smartphone with this name. A program of this name contains an Easter Egg game called Surf that is reasonably similar to the much earlier game SkiFree. Matt Trifiro and Jacob Smith are co-chairs of an organization called \"State of the [this word]\" that tracks progress on a type of computing described by this adjective. A program of this name had its official name announced at Build 2015, having previously been known as (*) Spartan. The company Swim.AI is one of several startups working on AI algorithms described by this adjective. One software package of this name ditched the Chakra JavaScript engine and other proprietary components for Chromium in 2019. Computing described by this algorithm might run a machine learning algorithm on an Internet of Things device rather than on the cloud. For 10 points, give this word that names Microsoft's successor to Internet Explorer.",
+   "answer": "<b><u>Edge</u></b> [accept Ubuntu <b><u>Edge</u></b>]",
+   "answer_sanitized": "Edge [accept Ubuntu Edge]",
+   "updatedAt": "2026-11-06T04:02:32.717Z",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "alternate_subcategory": "Computer Science",
+   "number": 2,
+   "difficulty": 10,
+   "packet": {
+    "_id": "6aed5158b4785b7a4cbd95a3",
+    "name": "01",
+    "number": 1
+   },
+   "set": {
+    "_id": "6aed5158b4785b7a4cbd95a2",
+    "name": "2026 Notepad++",
+    "year": 2026,
+    "standard": false
+   }
+  },
+  {
+   "_id": "6551b0912c809f9dfdac1ec7",
+   "difficulty": 7,
+   "packet": {
+    "_id": "6551b0912c809f9dfdac1eb7",
+    "name": "I – Iowa A, McGill B, NYU A, Toronto A, Warwick A, William _ Mary B",
+    "number": 9
+   },
+   "set": {
+    "_id": "6551b08d2c809f9dfdac1d5e",
+    "name": "2023 ACF Winter",
+    "year": 2023,
+    "standard": true
+   },
+   "question": "An algorithm that puts two of these systems in a zero-sum game was the subject of a feud between Jürgen (“YUR-gun”) Schmidhuber and Ian Goodfellow. Alex Krizhevsky’s namesake one of these systems broke ILSVRC records in 2012 and popularized implementing them with CUDA (“KOO-da”). Five years before a broader funding crisis, these systems fell out of favor when Minsky and Papert proved that their predecessors cannot compute XOR (“ex-or”). A dynamic programming algorithm for reverse-mode automatic differentiation used with these systems is called backpropagation. Nonlinear activation functions in these systems are applied on feedforward connections between hidden layers. For 10 points, name these systems studied in deep learning, which mimic models of the human brain.",
+   "answer": "artificial <b><u>neural net</u></b>works [accept deep <b><u>neural net</u></b>works; accept convolutional <b><u>neural net</u></b>works; accept multi-layer <b><u>perceptrons</u></b>; prompt on <u>NN</u>s; prompt on <u>machine learning</u> models or <u>ML</u> models or connectionist <u>AI</u> systems or <u>connectionist model</u>s; prompt on <u>deep learning</u> models or <u>DL</u> models until read; prompt on <u>AlexNet</u> or <u>CNN</u>s by asking “which is an example of what systems?”; reject “generative adversarial networks” or “GANs”] (Goodfellow is considered the inventor of generative adversarial networks, but Schmidhuber has argued that GANs are special cases of an algorithm that he published in the 1990s called artificial curiosity. ILSVRC is the ImageNet challenge, which AlexNet won in 2012. Between the early failure of perceptrons and the first AI winter, the AI community actively worked on symbolic AI.)",
+   "updatedAt": "2023-11-13T05:13:53.754Z",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "alternate_subcategory": "Computer Science",
+   "number": 16,
+   "answer_sanitized": "artificial neural networks [accept deep neural networks; accept convolutional neural networks; accept multi-layer perceptrons; prompt on NNs; prompt on machine learning models or ML models or connectionist AI systems or connectionist models; prompt on deep learning models or DL models until read; prompt on AlexNet or CNNs by asking \"which is an example of what systems?\"; reject \"generative adversarial networks\" or \"GANs\"] (Goodfellow is considered the inventor of generative adversarial networks, but Schmidhuber has argued that GANs are special cases of an algorithm that he published in the 1990s called artificial curiosity. ILSVRC is the ImageNet challenge, which AlexNet won in 2012. Between the early failure of perceptrons and the first AI winter, the AI community actively worked on symbolic AI.)",
+   "question_sanitized": "An algorithm that puts two of these systems in a zero-sum game was the subject of a feud between Jurgen (\"YUR-gun\") Schmidhuber and Ian Goodfellow. Alex Krizhevsky's namesake one of these systems broke ILSVRC records in 2012 and popularized implementing them with CUDA (\"KOO-da\"). Five years before a broader funding crisis, these systems fell out of favor when Minsky and Papert proved that their predecessors cannot compute XOR (\"ex-or\"). A dynamic programming algorithm for reverse-mode automatic differentiation used with these systems is called backpropagation. Nonlinear activation functions in these systems are applied on feedforward connections between hidden layers. For 10 points, name these systems studied in deep learning, which mimic models of the human brain."
+  },
+  {
+   "_id": "62fbeb02c3c9bf58ab2ab577",
+   "question": "<b>Stefan Lucks invented the “wide-pipe” method for constructing these things that makes use of a larger internal state. Andrei Broder invented a “Min” algorithm for estimating the similarity of sets by generating these things from sets that are viewed as columns of a matrix; that is a “locality-sensitive” method for generating these things. Linear and quadratic (*)</b> probing are open addressing methods that involve repeatedly adding to one of these values. These values are used to track and differentiate Git commits. Separate chaining is a method of resolving “collisions” between these values in a namesake data structure. For 10 points, name these values that are used for constant-time lookup in namesake tables.",
+   "answer": "<b><u>hash</u></b>es [or <b><u>hash code</u></b>s; or <b><u>hash value</u></b>s; or <b><u>digest</u></b>s; accept Git <b><u>hash</u></b>es or cryptographic <b><u>hash</u></b>es; accept <b><u>hash</u></b> function; accept <b><u>hash</u></b> table or <b><u>hash</u></b> map]",
+   "subcategory": "Other Science",
+   "category": "Science",
+   "packet": {
+    "_id": "62fbeb02c3c9bf58ab2ab56b",
+    "name": "04",
+    "number": 4
+   },
+   "set": {
+    "_id": "62fbeb02c3c9bf58ab2ab4ef",
+    "name": "2019 Terrapin",
+    "year": 2019,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.417Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Computer Science",
+   "number": 12,
+   "answer_sanitized": "hashes [or hash codes; or hash values; or digests; accept Git hashes or cryptographic hashes; accept hash function; accept hash table or hash map]",
+   "question_sanitized": "Stefan Lucks invented the \"wide-pipe\" method for constructing these things that makes use of a larger internal state. Andrei Broder invented a \"Min\" algorithm for estimating the similarity of sets by generating these things from sets that are viewed as columns of a matrix; that is a \"locality-sensitive\" method for generating these things. Linear and quadratic (*) probing are open addressing methods that involve repeatedly adding to one of these values. These values are used to track and differentiate Git commits. Separate chaining is a method of resolving \"collisions\" between these values in a namesake data structure. For 10 points, name these values that are used for constant-time lookup in namesake tables."
+  },
+  {
+   "_id": "62df87c09bc4e61b2fb3793c",
+   "question": "The ability to re-target these systems is aided by the use of intermediate representation. A popular book on these programs is affectionately known as the Dragon Book. Backtracking during one phase of these programs can be mostly eliminated by eliminating left recursion and performing left factoring. The first step of these programs creates atoms of information called tokens. The result of their \"cross-\" type can be used on different architectures than the one used. These programs have five major phases: lexical analysis, parsing, semantic analysis, optimization and code generation. For 10 points, identify these programs that generate machine code from a source program and are contrasted with interpreters.",
+   "answer": "<b><u>compiler</u></b>s",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "62df87c09bc4e61b2fb3793b",
+    "name": "2",
+    "number": 2
+   },
+   "set": {
+    "_id": "62df87c09bc4e61b2fb3774b",
+    "name": "2012 NASAT",
+    "year": 2012,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T05:58:55.263Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Computer Science",
+   "number": 1,
+   "answer_sanitized": "compilers",
+   "question_sanitized": "The ability to re-target these systems is aided by the use of intermediate representation. A popular book on these programs is affectionately known as the Dragon Book. Backtracking during one phase of these programs can be mostly eliminated by eliminating left recursion and performing left factoring. The first step of these programs creates atoms of information called tokens. The result of their \"cross-\" type can be used on different architectures than the one used. These programs have five major phases: lexical analysis, parsing, semantic analysis, optimization and code generation. For 10 points, identify these programs that generate machine code from a source program and are contrasted with interpreters."
+  },
+  {
+   "_id": "62ed60f81539231f571ee3c4",
+   "question": "<b>The Fiat–Shamir heuristic can be applied to improve Sigma-protocols for this task. Shamir’s theorem equates PSPACE with a class of problems which admit a certain method for this task. If a system for performing this task does not produce false positives, then it has soundness, which is the converse of completeness. In “interactive” systems for performing this task, the party with the power to perform this task has unlimited computational resources, but may be (*)</b> dishonest. In Arthur–Merlin protocols, the oracle Merlin performs this task while Arthur verifies. Performing this task for a given statement is equivalent to performing this task on the claim that the statement is in the language of all theorems. For 10 points, name this task that may be performed “by contradiction” or “by induction.”",
+   "answer": "<b><u>proof</u></b>-writing [or <b><u>proving</u></b>; or automated theorem <b><u>proving</u></b>; or interactive <b><u>proof</u></b> system; or zero-knowledge <b><u>proof</u></b>]",
+   "subcategory": "Other Science",
+   "category": "Science",
+   "packet": {
+    "_id": "62ed60f81539231f571ee3c1",
+    "name": "12",
+    "number": 12
+   },
+   "set": {
+    "_id": "62ed60f81539231f571ee1fd",
+    "name": "2022 MRNA VACCINE",
+    "year": 2022,
+    "standard": true
+   },
+   "updatedAt": "2023-10-19T14:32:33.291Z",
+   "difficulty": 7,
+   "alternate_subcategory": "Computer Science",
+   "number": 3,
+   "answer_sanitized": "proof-writing [or proving; or automated theorem proving; or interactive proof system; or zero-knowledge proof]",
+   "question_sanitized": "The Fiat-Shamir heuristic can be applied to improve Sigma-protocols for this task. Shamir's theorem equates PSPACE with a class of problems which admit a certain method for this task. If a system for performing this task does not produce false positives, then it has soundness, which is the converse of completeness. In \"interactive\" systems for performing this task, the party with the power to perform this task has unlimited computational resources, but may be (*) dishonest. In Arthur-Merlin protocols, the oracle Merlin performs this task while Arthur verifies. Performing this task for a given statement is equivalent to performing this task on the claim that the statement is in the language of all theorems. For 10 points, name this task that may be performed \"by contradiction\" or \"by induction.\""
+  },
+  {
+   "_id": "630adb562eacc381ae57f7b5",
+   "question": "<b>The fact that the n-th element of this is divisible by the square of the i-th element of this if and only if n is divisible by the i-th element of this gave a solution to the Julia Robinson Hypothesis. The divisibility properties of this allowed the proof that recursively enumerable sets are equivalent to Diophantine sets by Yuri Matiyasevich and thus solve Hilbert’s tenth problem. When modular arithmetic is applied to it, (*)</b> Pisano periods can be observed. Its closed-form solution is known as Binet’s formula, and it was introduced in the West in the book Liber Abaci. The numbers comprising this sequence, which is a type of Lucas sequence, are the sums of successive “shallow” diagonals of Pascal’s Triangle. Originally devised to study the growth of an hypothetical rabbit population, for 10 points, name this sequence, beginning 0, 1, 1, 2, 3, 5, in which each term is the sum of the two before it.",
+   "answer": "<b><u>Fibonacci</u></b> sequence",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "630adb562eacc381ae57f7b1",
+    "name": "05",
+    "number": 5
+   },
+   "set": {
+    "_id": "630adb562eacc381ae57f704",
+    "name": "2012 QUARK",
+    "year": 2012,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.506Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Math",
+   "number": 4,
+   "answer_sanitized": "Fibonacci sequence",
+   "question_sanitized": "The fact that the n-th element of this is divisible by the square of the i-th element of this if and only if n is divisible by the i-th element of this gave a solution to the Julia Robinson Hypothesis. The divisibility properties of this allowed the proof that recursively enumerable sets are equivalent to Diophantine sets by Yuri Matiyasevich and thus solve Hilbert's tenth problem. When modular arithmetic is applied to it, (*) Pisano periods can be observed. Its closed-form solution is known as Binet's formula, and it was introduced in the West in the book Liber Abaci. The numbers comprising this sequence, which is a type of Lucas sequence, are the sums of successive \"shallow\" diagonals of Pascal's Triangle. Originally devised to study the growth of an hypothetical rabbit population, for 10 points, name this sequence, beginning 0, 1, 1, 2, 3, 5, in which each term is the sum of the two before it."
+  },
+  {
+   "_id": "699e2ae47a0803cad64e415e",
+   "question": "<b>If a partially ordered set meets a condition named for this property, any collection of dense subsets of small size gives rise to a generic filter, by Martin’s axiom. A model with this property can nonetheless possess sets </b>(emphasize) <i><b>without</b></i><b> this property, by Skolem’s paradox. Unions with this property are implied by the prefix sigma, as in a sigma-finite measure. Non-negativity, assigning zero to the null set, and a type of (*) </b>additivity named for this property are the axioms of a measure. A famous proof by contradiction from 1891 assumes that a set [emphasize] <i>has</i> this property, then forms a new element that differs from all others in one coordinate. This property is [emphasize] <i>not</i> held by the set of infinite binary sequences, by Cantor’s diagonal argument. For 10 points, name this property of a set that has the same cardinality as the natural numbers.",
+   "question_sanitized": "If a partially ordered set meets a condition named for this property, any collection of dense subsets of small size gives rise to a generic filter, by Martin's axiom. A model with this property can nonetheless possess sets (emphasize) without this property, by Skolem's paradox. Unions with this property are implied by the prefix sigma, as in a sigma-finite measure. Non-negativity, assigning zero to the null set, and a type of (*) additivity named for this property are the axioms of a measure. A famous proof by contradiction from 1891 assumes that a set [emphasize] has this property, then forms a new element that differs from all others in one coordinate. This property is [emphasize] not held by the set of infinite binary sequences, by Cantor's diagonal argument. For 10 points, name this property of a set that has the same cardinality as the natural numbers.",
+   "answer": "<b><u>countable</u></b> [or word forms like <b><u>countability</u></b>; accept <b><u>countably</u></b> infinite or <b><u>countable</u></b> chain condition; accept <b><u>enumerable</u></b> or word forms; prompt on <u>infinite</u>]",
+   "answer_sanitized": "countable [or word forms like countability; accept countably infinite or countable chain condition; accept enumerable or word forms; prompt on infinite]",
+   "updatedAt": "2026-02-24T22:49:08.089Z",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "alternate_subcategory": "Math",
+   "number": 20,
+   "difficulty": 9,
+   "packet": {
+    "_id": "699e2ae37a0803cad64e414a",
+    "name": "01",
+    "number": 1
+   },
+   "set": {
+    "_id": "699e2ae37a0803cad64e4149",
+    "name": "2025 NAFTA",
+    "year": 2025,
+    "standard": true
+   }
+  },
+  {
+   "_id": "630020e3cab8fa6d1490bc64",
+   "question": "For a smooth function F between manifolds, a point P is described by this term if the differential of F at P is full rank. An axiom in Zermelo–Fraenkel set theory that guarantees that no set is an element of itself is alternately named the axiom of foundation or the axiom of this term. Any sufficiently large string in a language with this property can be written as xyz such that sticking more y’s in the middle keeps the new string in the language, according to the pumping lemma. This term describes a graph whose vertices all have the same degree. Every face of a Platonic solid is a convex polygon with this property. For 10 points, give this term describing polygons like squares and equilateral triangles, which have equal side lengths and angle measurements.",
+   "answer": "<b><u>regular</u></b> [or word forms like <b><u>regular</u></b>ity; prompt on <u>foundation</u> until read]",
+   "subcategory": "Other Science",
+   "category": "Science",
+   "packet": {
+    "_id": "630020e3cab8fa6d1490bc5c",
+    "name": "06",
+    "number": 6
+   },
+   "set": {
+    "_id": "630020e3cab8fa6d1490bb84",
+    "name": "2018 NASAT",
+    "year": 2018,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.469Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Math",
+   "number": 8,
+   "answer_sanitized": "regular [or word forms like regularity; prompt on foundation until read]",
+   "question_sanitized": "For a smooth function F between manifolds, a point P is described by this term if the differential of F at P is full rank. An axiom in Zermelo-Fraenkel set theory that guarantees that no set is an element of itself is alternately named the axiom of foundation or the axiom of this term. Any sufficiently large string in a language with this property can be written as xyz such that sticking more y's in the middle keeps the new string in the language, according to the pumping lemma. This term describes a graph whose vertices all have the same degree. Every face of a Platonic solid is a convex polygon with this property. For 10 points, give this term describing polygons like squares and equilateral triangles, which have equal side lengths and angle measurements."
+  },
+  {
+   "_id": "657fd7dade6df0163bbe3bbb",
+   "difficulty": 10,
+   "packet": {
+    "_id": "657fd7d9de6df0163bbe3bab",
+    "name": "7",
+    "number": 7
+   },
+   "set": {
+    "_id": "657fd7d7de6df0163bbe3b2c",
+    "name": "2023 EMACS",
+    "year": 2023,
+    "standard": false
+   },
+   "question": "<b>A talk by Dan Ellis about this project featured a graph of the stress levels of ten members of the team over time. This project’s first implementation stored its entire state in a single row in Cassandra, which was abandoned due to being too slow; the developers switched to storing the state in redis in a “bitfield of 1 million 4 bit integers”. This project references Runescape with text like “Connection lost. Please wait - attempting to reestablish” and “Unregistered Hypercam 2.” The Green Lattice, the Blue Corner, and (*)</b> Rainbow Road are factions that formed in this project. The main person responsible for this 2017 project, Josh Wardle, later created the hit web game Wordle. In 2022, this project was rebooted with a doubled canvas size and 32-color palette. For 10 points, name this collaborative Reddit April Fools event in which users modified a 1000 by 1000 image one pixel at a time.",
+   "answer": "<b><u>r/place</u></b> (“r place” or “r slash place”) [accept <b><u>place</u></b>]",
+   "updatedAt": "2023-12-22T21:10:12.751Z",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "alternate_subcategory": "Computer Science",
+   "number": 16,
+   "answer_sanitized": "r/place (\"r place\" or \"r slash place\") [accept place]",
+   "question_sanitized": "A talk by Dan Ellis about this project featured a graph of the stress levels of ten members of the team over time. This project's first implementation stored its entire state in a single row in Cassandra, which was abandoned due to being too slow; the developers switched to storing the state in redis in a \"bitfield of 1 million 4 bit integers\". This project references Runescape with text like \"Connection lost. Please wait - attempting to reestablish\" and \"Unregistered Hypercam 2.\" The Green Lattice, the Blue Corner, and (*) Rainbow Road are factions that formed in this project. The main person responsible for this 2017 project, Josh Wardle, later created the hit web game Wordle. In 2022, this project was rebooted with a doubled canvas size and 32-color palette. For 10 points, name this collaborative Reddit April Fools event in which users modified a 1000 by 1000 image one pixel at a time."
+  },
+  {
+   "_id": "62ec4057d6777289bcae86f7",
+   "question": "Using one of these mathematical objects whose form is given by the Lagrange (“luh-grahnzh”) inversion formula makes it possible to solve quintics of the form “x to the fifth minus x plus a constant equals zero.” If the principal part of one of these objects is identically zero, a function has a removable singularity. Analytic continuation extends a function’s domain by replacing one of these objects with another one of them that is valid over a larger domain. The residue of a function at an isolated singularity is identified with the number denoted “b-sub-one” in one of these objects named for Pierre Alphonse Laurent (“loh-rawn”). These objects sum to a unique value inside their radius of convergence. For 10 points, name these objects that include ones used to approximate functions named for Brook Taylor.",
+   "answer": "<b><u>power series</u></b> [accept <b><u>Laurent series</u></b> before “Laurent”; accept <b><u>Taylor series</u></b> before “Taylor”; prompt on <u>series</u>; prompt on <u>infinite series</u> before “infinite”; prompt on analytic <u>function</u>s or homomorphic <u>function</u>s by asking “what objects represent the functions?”; prompt on <u>polynomial</u>s by asking “the polynomial is formed by truncating what objects?”]",
+   "subcategory": "Other Science",
+   "category": "Science",
+   "packet": {
+    "_id": "62ec4057d6777289bcae86f6",
+    "name": "F_ Minnesota, Oxford A, Oxford C, South Carolina",
+    "number": 6
+   },
+   "set": {
+    "_id": "62ec4057d6777289bcae8623",
+    "name": "2022 ACF Regionals",
+    "year": 2022,
+    "standard": true
+   },
+   "updatedAt": "2023-11-08T03:09:03.651Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Math",
+   "number": 1,
+   "answer_sanitized": "power series [accept Laurent series before \"Laurent\"; accept Taylor series before \"Taylor\"; prompt on series; prompt on infinite series before \"infinite\"; prompt on analytic functions or homomorphic functions by asking \"what objects represent the functions?\"; prompt on polynomials by asking \"the polynomial is formed by truncating what objects?\"]",
+   "question_sanitized": "Using one of these mathematical objects whose form is given by the Lagrange (\"luh-grahnzh\") inversion formula makes it possible to solve quintics of the form \"x to the fifth minus x plus a constant equals zero.\" If the principal part of one of these objects is identically zero, a function has a removable singularity. Analytic continuation extends a function's domain by replacing one of these objects with another one of them that is valid over a larger domain. The residue of a function at an isolated singularity is identified with the number denoted \"b-sub-one\" in one of these objects named for Pierre Alphonse Laurent (\"loh-rawn\"). These objects sum to a unique value inside their radius of convergence. For 10 points, name these objects that include ones used to approximate functions named for Brook Taylor."
+  },
+  {
+   "_id": "657fd7d8de6df0163bbe3b77",
+   "difficulty": 10,
+   "packet": {
+    "_id": "657fd7d8de6df0163bbe3b6c",
+    "name": "4",
+    "number": 4
+   },
+   "set": {
+    "_id": "657fd7d7de6df0163bbe3b2c",
+    "name": "2023 EMACS",
+    "year": 2023,
+    "standard": false
+   },
+   "question": "<b>Fletcher Penney created a “Multi” extension of this format compatible with LaTeX (“LAY-tech”). The most popular implementation of this format is only on version 0.30 despite being worked on for over 8 years, due to unresolved decisions like the formatting of atx headers. That implementation’s spec was written by Berkeley philosopher John MacFarlane. In 2014, StackOverflow founder Jeff Atwood announced a standardization effort for this format called “Standard [this format]”, though that name was changed to “Common [this format]” after objections from its co-creator (*)</b> John Gruber. Reddit uses an extension of this format that supports things like spoilertext, while GitHub has its own “GitHub Flavored” version that implements strikethroughs with pairs of tildes. For 10 points, name this text format commonly used for blogging and code documentation, such as in GitHub’s README.md (“read me dot m-d”) files.",
+   "answer": "<b><u>Markdown</u></b> [accept any answer that includes the word <b><u>Markdown</u></b>; accept <b><u>CommonMark</u></b>]",
+   "updatedAt": "2023-12-22T21:10:12.751Z",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "alternate_subcategory": "Computer Science",
+   "number": 11,
+   "answer_sanitized": "Markdown [accept any answer that includes the word Markdown; accept CommonMark]",
+   "question_sanitized": "Fletcher Penney created a \"Multi\" extension of this format compatible with LaTeX (\"LAY-tech\"). The most popular implementation of this format is only on version 0.30 despite being worked on for over 8 years, due to unresolved decisions like the formatting of atx headers. That implementation's spec was written by Berkeley philosopher John MacFarlane. In 2014, StackOverflow founder Jeff Atwood announced a standardization effort for this format called \"Standard [this format]\", though that name was changed to \"Common [this format]\" after objections from its co-creator (*) John Gruber. Reddit uses an extension of this format that supports things like spoilertext, while GitHub has its own \"GitHub Flavored\" version that implements strikethroughs with pairs of tildes. For 10 points, name this text format commonly used for blogging and code documentation, such as in GitHub's README.md (\"read me dot m-d\") files."
+  },
+  {
+   "_id": "63be318bb3c055258759807b",
+   "question": "One way of performing of a process of this sort involves taking the square root of a pivot matrix, multiplying it with the transpose of a certain type of matrix, and multiplying that product by its transpose. The most common way of calculating the pseudoinverse can be easily calculated after performing another type of this process on a matrix because the pseudoinverse of an eigenmatrix is simple to calculate. Those processes for doing this activity on matrices respectively called Cholesky and the singular value one. Another method of doing this action begins by using an augmented matrix then proceeds to eliminate using pivots in both entries until it yields a canonical form of an upper triangular and lower triangular matrix. For 10 points, name this operation which includes the “LU” variety, which is the separation of a matrix into a product of two matrices.",
+   "answer": "matrix <b><u>decomposition</u></b> or matrix <b><u>factorization</u></b>",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "63be318bb3c0552587598069",
+    "name": "Illinois A",
+    "number": 8
+   },
+   "set": {
+    "_id": "63be318bb3c0552587597f6a",
+    "name": "2010 Penn Bowl",
+    "year": 2010,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.533Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Math",
+   "number": 18,
+   "answer_sanitized": "matrix decomposition or matrix factorization",
+   "question_sanitized": "One way of performing of a process of this sort involves taking the square root of a pivot matrix, multiplying it with the transpose of a certain type of matrix, and multiplying that product by its transpose. The most common way of calculating the pseudoinverse can be easily calculated after performing another type of this process on a matrix because the pseudoinverse of an eigenmatrix is simple to calculate. Those processes for doing this activity on matrices respectively called Cholesky and the singular value one. Another method of doing this action begins by using an augmented matrix then proceeds to eliminate using pivots in both entries until it yields a canonical form of an upper triangular and lower triangular matrix. For 10 points, name this operation which includes the \"LU\" variety, which is the separation of a matrix into a product of two matrices."
+  },
+  {
+   "_id": "636ca2cb1b6aedfbdb9efd1a",
+   "question": "<b>The Cauchy-Schwarz inequality states that the magnitude of a generalized form of this operation on u and v is less than or equal to the product of the magnitudes of u and v. For orthonormal vectors e-sub-i and e-sub-j, this operation is equal to the Kronecker delta of i and j. The inner (*)</b> product generalizes this operation, and the square root of this operation of a vector with itself is the Euclidean norm. This operation equals zero for orthogonal vectors, and, for vectors a and b, this operation is equal to the magnitude of a times the magnitude of b times the (emphasize) cosine of the angle between a and b. For 10 points, name this operation that, by summing the products of their components, converts two vectors into a scalar, unlike the cross product.",
+   "answer": "<b><u>dot product</u></b> [accept <b><u>scalar product</u></b>; accept <b><u>inner product</u></b> before mentioned]",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "636ca2cb1b6aedfbdb9efd11",
+    "name": "A. Packet 1",
+    "number": 1
+   },
+   "set": {
+    "_id": "636ca2cb1b6aedfbdb9efd10",
+    "name": "2018 Florida Spring Tournament (FST)",
+    "year": 2018,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.510Z",
+   "difficulty": 7,
+   "alternate_subcategory": "Math",
+   "number": 9,
+   "answer_sanitized": "dot product [accept scalar product; accept inner product before mentioned]",
+   "question_sanitized": "The Cauchy-Schwarz inequality states that the magnitude of a generalized form of this operation on u and v is less than or equal to the product of the magnitudes of u and v. For orthonormal vectors e-sub-i and e-sub-j, this operation is equal to the Kronecker delta of i and j. The inner (*) product generalizes this operation, and the square root of this operation of a vector with itself is the Euclidean norm. This operation equals zero for orthogonal vectors, and, for vectors a and b, this operation is equal to the magnitude of a times the magnitude of b times the (emphasize) cosine of the angle between a and b. For 10 points, name this operation that, by summing the products of their components, converts two vectors into a scalar, unlike the cross product."
+  },
+  {
+   "_id": "6326bf0f692d593d1d7a8fc0",
+   "question": "It’s not the Riemann integral, but iteratively applying this procedure to a function yields a similar operation named for Thomas Stieltjes (“steel-chiss”). The Bromwich integral is a general technique for [emphasize] inverting this operation, though it can be easily inverted byfinding partial fraction decompositions of rational functions. This operation yields a unique output for any causal (“CAUSE-al”) input. Performing it on a system’s impulse response yields its transfer function, whose poles can be used to analyze the stability of a system. For the bilateral variant of this operation, substituting in a purely imaginary variable reduces this operation to the Fourier transform. For 10 points, a real-valued function is converted into a complex-valued function in the s-domain by what “transform” named for a Frenchman?",
+   "answer": "<b><u>Laplace</u></b> transform [accept <b><u>Laplace</u></b>–Stieltjes transform]",
+   "subcategory": "Other Science",
+   "category": "Science",
+   "packet": {
+    "_id": "6326bf0f692d593d1d7a8fb5",
+    "name": "J - Georgia Tech B, Illinois B, Waterloo A, and Pitt B",
+    "number": 10
+   },
+   "set": {
+    "_id": "6326bf0f692d593d1d7a8e31",
+    "name": "2020 ACF Regionals",
+    "year": 2020,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.491Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Math",
+   "number": 11,
+   "answer_sanitized": "Laplace transform [accept Laplace-Stieltjes transform]",
+   "question_sanitized": "It's not the Riemann integral, but iteratively applying this procedure to a function yields a similar operation named for Thomas Stieltjes (\"steel-chiss\"). The Bromwich integral is a general technique for [emphasize] inverting this operation, though it can be easily inverted byfinding partial fraction decompositions of rational functions. This operation yields a unique output for any causal (\"CAUSE-al\") input. Performing it on a system's impulse response yields its transfer function, whose poles can be used to analyze the stability of a system. For the bilateral variant of this operation, substituting in a purely imaginary variable reduces this operation to the Fourier transform. For 10 points, a real-valued function is converted into a complex-valued function in the s-domain by what \"transform\" named for a Frenchman?"
+  },
+  {
+   "_id": "657fd7d8de6df0163bbe3b64",
+   "difficulty": 10,
+   "packet": {
+    "_id": "657fd7d8de6df0163bbe3b57",
+    "name": "3",
+    "number": 3
+   },
+   "set": {
+    "_id": "657fd7d7de6df0163bbe3b2c",
+    "name": "2023 EMACS",
+    "year": 2023,
+    "standard": false
+   },
+   "question": "<b>At UPenn’s Moore School, J. Presper Eckert invented a technology that uses this material alongside piezo crystal transducers made of quartz. Herman Hollerith’s tabulating machine, used in the 1890 Census, worked by placing punch cards above containers of this material. According to Maurice Wilkes, Alan Turing proposed the use of gin instead of this material when building the EDSAC (“ED-sack”). Early computers like the UNIVAC (“UNI-vack”) implemented delay-line memory by sending sound waves through tubes of this material. A key improvement in Thomas Edison’s light bulbs was better versions of Geissler and Sprengel pumps, which use this material to produce a (*)</b> vacuum. The liquid crystal company Chisso Corporation dumped a chemical containing this metal in the water supply of Minamata, Japan. For 10 points, fluorescent lamps use vapors of what toxic metal that is liquid at room temperature?",
+   "answer": "<b><u>mercury</u></b> [accept <b><u>quicksilver</u></b>]",
+   "updatedAt": "2023-12-22T21:10:12.751Z",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "alternate_subcategory": "Computer Science",
+   "number": 13,
+   "answer_sanitized": "mercury [accept quicksilver]",
+   "question_sanitized": "At UPenn's Moore School, J. Presper Eckert invented a technology that uses this material alongside piezo crystal transducers made of quartz. Herman Hollerith's tabulating machine, used in the 1890 Census, worked by placing punch cards above containers of this material. According to Maurice Wilkes, Alan Turing proposed the use of gin instead of this material when building the EDSAC (\"ED-sack\"). Early computers like the UNIVAC (\"UNI-vack\") implemented delay-line memory by sending sound waves through tubes of this material. A key improvement in Thomas Edison's light bulbs was better versions of Geissler and Sprengel pumps, which use this material to produce a (*) vacuum. The liquid crystal company Chisso Corporation dumped a chemical containing this metal in the water supply of Minamata, Japan. For 10 points, fluorescent lamps use vapors of what toxic metal that is liquid at room temperature?"
+  },
+  {
+   "_id": "630020e3cab8fa6d1490c1c9",
+   "question": "An algorithm for this problem that classifies bases as either witnesses or liars is named for Solovay and Strassen. The Baillie–PSW algorithm works because the lists of exceptions to two other criteria have no known overlaps. Pomerance and Lenstra improved the exponent to six in the first polynomial-time algorithm for this problem, which was announced in a 2002 paper by Agrawal, Kayal, and Saxena titled \"[this problem] is in P.\" False positives in this problem include the Carmichael numbers. A naïve approach to this problem is to divide the input by every positive integer less than it, looking for a remainder of zero. For 10 points, identify this problem of determining whether a given integer has exactly two positive divisors.",
+   "answer": "<b><u>primality test</u></b>s [accept <b><u>PRIMES</u></b>; accept anything about <b><u>determining</u></b> if a number is <b><u>prime</u></b>]",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "630020e3cab8fa6d1490c1c5",
+    "name": "18",
+    "number": 18
+   },
+   "set": {
+    "_id": "630020e3cab8fa6d1490bee9",
+    "name": "2017 NASAT",
+    "year": 2017,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.463Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Math",
+   "number": 4,
+   "answer_sanitized": "primality tests [accept PRIMES; accept anything about determining if a number is prime]",
+   "question_sanitized": "An algorithm for this problem that classifies bases as either witnesses or liars is named for Solovay and Strassen. The Baillie-PSW algorithm works because the lists of exceptions to two other criteria have no known overlaps. Pomerance and Lenstra improved the exponent to six in the first polynomial-time algorithm for this problem, which was announced in a 2002 paper by Agrawal, Kayal, and Saxena titled \"[this problem] is in P.\" False positives in this problem include the Carmichael numbers. A naive approach to this problem is to divide the input by every positive integer less than it, looking for a remainder of zero. For 10 points, identify this problem of determining whether a given integer has exactly two positive divisors."
+  },
+  {
+   "_id": "6aed5159b4785b7a4cbd95de",
+   "question": "<b>One tech company based in this country built a \"Stealth Building\" that was designed to resemble a B-2 bomber. In 1999, the spouse of a tech millionaire from this country showed up to a gala with a gold breastplate studded with 15-carat-diamonds on the nipples; that company based in this country has published software like CorelDRAW. One of the biggest tech companies in this country went bankrupt after Chinese hackers stole plans from its CEO Frank Dunn, who resigned due to an unrelated accounting scandal. A tech company founded in this country had an early hit with the Inter@ctive (*)</b> Pager and a later device released in 1999 that could read from an Exchange Server. This country was home to Nortel. Tobias Lütke co-founded the e-commerce company Shopify in this country. For 10 points, name this country home to Research in Motion, the makers of the Blackberry.",
+   "question_sanitized": "One tech company based in this country built a \"Stealth Building\" that was designed to resemble a B-2 bomber. In 1999, the spouse of a tech millionaire from this country showed up to a gala with a gold breastplate studded with 15-carat-diamonds on the nipples; that company based in this country has published software like CorelDRAW. One of the biggest tech companies in this country went bankrupt after Chinese hackers stole plans from its CEO Frank Dunn, who resigned due to an unrelated accounting scandal. A tech company founded in this country had an early hit with the Inter@ctive (*) Pager and a later device released in 1999 that could read from an Exchange Server. This country was home to Nortel. Tobias Lutke co-founded the e-commerce company Shopify in this country. For 10 points, name this country home to Research in Motion, the makers of the Blackberry.",
+   "answer": "<b><u>Canada</u></b>",
+   "answer_sanitized": "Canada",
+   "updatedAt": "2026-11-06T04:02:33.149Z",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "alternate_subcategory": "Computer Science",
+   "number": 17,
+   "difficulty": 10,
+   "packet": {
+    "_id": "6aed5159b4785b7a4cbd95cd",
+    "name": "03",
+    "number": 3
+   },
+   "set": {
+    "_id": "6aed5158b4785b7a4cbd95a2",
+    "name": "2026 Notepad++",
+    "year": 2026,
+    "standard": false
+   }
+  },
+  {
+   "_id": "62f1bf365ffd63b5f24c1c17",
+   "question": "The number of steps in a procedure named for this man can be minimized with the method of least absolute remainders. Since their ideals can be generated by an element with a minimal value for their equipped function, this man's namesake integral domains are always principal ideal domains. Reversing a process named for this man allows one to solve for x and y in Bézout's (bez-OUTS) identity. This man is the first namesake of a theorem that puts even perfect numbers in correspondence with Mersenne primes, which he co-names with Euler. Consecutive Fibonacci numbers are the worst inputs to this man's namesake algorithm, which finds the GCD of two numbers. This mathematician gave the first proof of the infinitude of primes. For 10 points, name this mathematician whose number theory proofs appear in his Elements.",
+   "answer": "<b><u>Euclid</u></b> of Alexandria [accept <b><u>Euclidean</u></b> domains or the extended <b><u>Euclidean</u></b> algorithm]",
+   "subcategory": "Other Science",
+   "category": "Science",
+   "packet": {
+    "_id": "62f1bf365ffd63b5f24c1c0a",
+    "name": "10",
+    "number": 10
+   },
+   "set": {
+    "_id": "62f1bf365ffd63b5f24c1a86",
+    "name": "2021 NASAT",
+    "year": 2021,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.406Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Math",
+   "number": 13,
+   "answer_sanitized": "Euclid of Alexandria [accept Euclidean domains or the extended Euclidean algorithm]",
+   "question_sanitized": "The number of steps in a procedure named for this man can be minimized with the method of least absolute remainders. Since their ideals can be generated by an element with a minimal value for their equipped function, this man's namesake integral domains are always principal ideal domains. Reversing a process named for this man allows one to solve for x and y in Bezout's (bez-OUTS) identity. This man is the first namesake of a theorem that puts even perfect numbers in correspondence with Mersenne primes, which he co-names with Euler. Consecutive Fibonacci numbers are the worst inputs to this man's namesake algorithm, which finds the GCD of two numbers. This mathematician gave the first proof of the infinitude of primes. For 10 points, name this mathematician whose number theory proofs appear in his Elements."
+  },
+  {
+   "_id": "63002656ea186ec68c3bd588",
+   "question": "The roots of this man's namesake polynomial are useful for interpolation as they minimize the oscillation around the interval edges known as Runge's phenomenon. Those polynomials are also used in the Clenshaw-Curtis quadrature for numerical integration. The observation that there are more 3 modulo 4 prime numbers than 1 modulo 4 is a \"bias\" named for this man. This man names a type of filter with a steeper roll-off rate than a Butterworth filter. The probability of data being within k times sigma of the mean is less than one over k squared according to this man. That statement can be proven by using Markov's inequality. For 10 points, name this Russian mathematician whose namesake inequality gives an upper bound on the number of data points at some distance from the mean.",
+   "answer": "Pafnuty <b><u>Chebyshev</u></b>",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "63002656ea186ec68c3bd585",
+    "name": "06",
+    "number": 6
+   },
+   "set": {
+    "_id": "63002656ea186ec68c3bd4ad",
+    "name": "2014 VCU Open",
+    "year": 2014,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.473Z",
+   "difficulty": 10,
+   "alternate_subcategory": "Math",
+   "number": 3,
+   "answer_sanitized": "Pafnuty Chebyshev",
+   "question_sanitized": "The roots of this man's namesake polynomial are useful for interpolation as they minimize the oscillation around the interval edges known as Runge's phenomenon. Those polynomials are also used in the Clenshaw-Curtis quadrature for numerical integration. The observation that there are more 3 modulo 4 prime numbers than 1 modulo 4 is a \"bias\" named for this man. This man names a type of filter with a steeper roll-off rate than a Butterworth filter. The probability of data being within k times sigma of the mean is less than one over k squared according to this man. That statement can be proven by using Markov's inequality. For 10 points, name this Russian mathematician whose namesake inequality gives an upper bound on the number of data points at some distance from the mean."
+  },
+  {
+   "_id": "6361e01fec1ecd3e795a421d",
+   "question": "When one of these mappings is performed on a locally compact space X and every compact subset K in X intersects its own image, then this function is called “properly discontinuous.” These mappings are the subject of a lemma sometimes named for Cauchy and Frobenius but more often named for Burnside. The “class equation” is a consequence of taking this function to be a conjugation that maps from a group G to itself. When G is performing this mapping on a set X, different orbits resulting from this mapping are disjoint, and the order of G is equal to “the order of the orbit of some element a in X” multiplied by “the order of the stabilizer of a.” For a group G and set X, every one of these functions of G on X induces a homomorphism from G into the symmetric group of X called a permutation representation. For 10 points, name these functions that take in a group element from G, and an element from set X, and output an element from set X.",
+   "answer": "<u>group action</u>s [accept <u>action</u>s after “group”; prompt on “<u>action</u>s” before “group”]",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "6361e01fec1ecd3e795a420b",
+    "name": "08 - Prelims 8 - Virginia A",
+    "number": 8
+   },
+   "set": {
+    "_id": "6361e01fec1ecd3e795a40eb",
+    "name": "2018 ACF Nationals",
+    "year": 2018,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.520Z",
+   "difficulty": 9,
+   "alternate_subcategory": "Math",
+   "number": 18,
+   "answer_sanitized": "group actions [accept actions after \"group\"; prompt on \"actions\" before \"group\"]",
+   "question_sanitized": "When one of these mappings is performed on a locally compact space X and every compact subset K in X intersects its own image, then this function is called \"properly discontinuous.\" These mappings are the subject of a lemma sometimes named for Cauchy and Frobenius but more often named for Burnside. The \"class equation\" is a consequence of taking this function to be a conjugation that maps from a group G to itself. When G is performing this mapping on a set X, different orbits resulting from this mapping are disjoint, and the order of G is equal to \"the order of the orbit of some element a in X\" multiplied by \"the order of the stabilizer of a.\" For a group G and set X, every one of these functions of G on X induces a homomorphism from G into the symmetric group of X called a permutation representation. For 10 points, name these functions that take in a group element from G, and an element from set X, and output an element from set X."
+  },
+  {
+   "_id": "630ae7fafb0cd6e790c31f1a",
+   "question": "<b>One of these properties for a commutative ring is given by the supremum of the length of chains of prime ideals. Another one of these is defined as the minimal value x such that every open cover admits a refining open cover with no point contained in more than x +1 sets. By using the Steinitz exchange lemma, the well-definedness of another one of these properties can be proven by (*)</b> swapping vectors between sets. For the domain of a linear map, this property equals the sum of its value for the kernel and for the image, by the rank-nullity theorem. Rn is isomorphic to any real vector space with a value of n for this property, given by the size of a basis. For 10 points, give this property which for Euclidean space how many coordinates are needed to specify a point.",
+   "answer": "<b><u>dimension</u></b>",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "630ae7fafb0cd6e790c31f08",
+    "name": "GMU + Sheffield A + Chicago C",
+    "number": 8
+   },
+   "set": {
+    "_id": "630ae7fafb0cd6e790c31dcb",
+    "name": "2013 Western Invitational Tournament",
+    "year": 2013,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.486Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Math",
+   "number": 18,
+   "answer_sanitized": "dimension",
+   "question_sanitized": "One of these properties for a commutative ring is given by the supremum of the length of chains of prime ideals. Another one of these is defined as the minimal value x such that every open cover admits a refining open cover with no point contained in more than x +1 sets. By using the Steinitz exchange lemma, the well-definedness of another one of these properties can be proven by (*) swapping vectors between sets. For the domain of a linear map, this property equals the sum of its value for the kernel and for the image, by the rank-nullity theorem. Rn is isomorphic to any real vector space with a value of n for this property, given by the size of a basis. For 10 points, give this property which for Euclidean space how many coordinates are needed to specify a point."
+  },
+  {
+   "_id": "62f5c57693c38435a5a33c14",
+   "question": "<b>An object named for this mathematician had its “fine structure” studied by Ronald Jensen in a 1972 paper that introduced the diamond principle. In a 1940 text, this mathematician proved a lemma by which Sigma-1 elementarity is sufficient for the Mostowski collapse to yield a unique isomorphism. Leon Henkin greatly generalized the main result of this mathematician’s dissertation. John von Neumann, Paul (*)</b> Bernays, and this mathematician co-name a conservative extension of ZFC with proper classes. This logician used first-order definability to build L, the constructible universe in which the continuum hypothesis holds. He also showed that truth and provability are equivalent in first-order logic, but that stronger formal systems have unprovable “true” sentences. For 10 points, give this namesake of two incompleteness theorems for mathematical logic.",
+   "answer": "Kurt <b><u>Gödel</u></b>",
+   "subcategory": "Other Science",
+   "category": "Science",
+   "packet": {
+    "_id": "62f5c57693c38435a5a33c13",
+    "name": "05 Eltinge + Kelly + Brodsky",
+    "number": 5
+   },
+   "set": {
+    "_id": "62f5c57693c38435a5a33b6e",
+    "name": "2022 Chicago Open",
+    "year": 2022,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.389Z",
+   "difficulty": 10,
+   "alternate_subcategory": "Math",
+   "number": 1,
+   "answer_sanitized": "Kurt Godel",
+   "question_sanitized": "An object named for this mathematician had its \"fine structure\" studied by Ronald Jensen in a 1972 paper that introduced the diamond principle. In a 1940 text, this mathematician proved a lemma by which Sigma-1 elementarity is sufficient for the Mostowski collapse to yield a unique isomorphism. Leon Henkin greatly generalized the main result of this mathematician's dissertation. John von Neumann, Paul (*) Bernays, and this mathematician co-name a conservative extension of ZFC with proper classes. This logician used first-order definability to build L, the constructible universe in which the continuum hypothesis holds. He also showed that truth and provability are equivalent in first-order logic, but that stronger formal systems have unprovable \"true\" sentences. For 10 points, give this namesake of two incompleteness theorems for mathematical logic."
+  },
+  {
+   "_id": "62ed6a483fe041d20f4a4984",
+   "question": "<b>Reversing all the edges of one of these objects is the first step of Brzozowski's algorithm. Another algorithm uses partition refinement to merge the nondistinguishable states of one of these objects; that algorithm to minimize these constructs is called Hopcroft's algorithm. The Rabin-Scott powerset construction creates an exponentially large one of these objects. The Myhill-Nerode theorem asserts the existence of one of these objects with as many states are there are equivalence classes among strings in a given (*)</b> regular language. They have precisely once exiting transition arrow for every symbol in their alphabet. Every NFA with n states can be converted to one of these objects with 2^n states. They're not Turing machines, but they consist of an alphabet, a transition function, and a set of states, some of which are called accept states. For 10 points, name this type of finite state machine that non-probabilistically accepts or rejects a given input string.",
+   "answer": "<b><u>deterministic finite automaton</u></b> [or <b><u>DFA</u></b>; or <b><u>deterministic finite state machine</u></b> before giveaway; prompt on partial answer; prompt on <b><u>finite state machine</u></b>]",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "62ed6a483fe041d20f4a497d",
+    "name": "10",
+    "number": 10
+   },
+   "set": {
+    "_id": "62ed6a483fe041d20f4a47f9",
+    "name": "2015 George Oppen",
+    "year": 2015,
+    "standard": true
+   },
+   "updatedAt": "2025-05-05T18:43:36.055Z",
+   "difficulty": 9,
+   "number": 7,
+   "answer_sanitized": "deterministic finite automaton [or DFA; or deterministic finite state machine before giveaway; prompt on partial answer; prompt on finite state machine]",
+   "question_sanitized": "Reversing all the edges of one of these objects is the first step of Brzozowski's algorithm. Another algorithm uses partition refinement to merge the nondistinguishable states of one of these objects; that algorithm to minimize these constructs is called Hopcroft's algorithm. The Rabin-Scott powerset construction creates an exponentially large one of these objects. The Myhill-Nerode theorem asserts the existence of one of these objects with as many states are there are equivalence classes among strings in a given (*) regular language. They have precisely once exiting transition arrow for every symbol in their alphabet. Every NFA with n states can be converted to one of these objects with 2^n states. They're not Turing machines, but they consist of an alphabet, a transition function, and a set of states, some of which are called accept states. For 10 points, name this type of finite state machine that non-probabilistically accepts or rejects a given input string.",
+   "alternate_subcategory": "Computer Science"
+  },
+  {
+   "_id": "630020e3cab8fa6d1490bd44",
+   "question": "This number is the only value of p for which the normed space L p is also an inner product space. If any two points in a topological space can be separated by neighborhoods, the space is T sub this number, which means the space is Hausdorff. The smallest finite field has this number of elements, which is also the size of the smallest nontrivial group. The power set of X is denoted by raising this number to the X. A commonly taught example of proof by contradiction is to show that the square root of this number is irrational. This number is the Euler characteristic of a sphere, and for any convex polyhedron, it equals the number of vertices minus the number of edges plus the number of faces. For 10 points, give the number of points needed to uniquely define a line.",
+   "answer": "<b><u>two</u></b> [or <b><u>2</u></b>]",
+   "subcategory": "Other Science",
+   "category": "Science",
+   "packet": {
+    "_id": "630020e3cab8fa6d1490bd33",
+    "name": "11",
+    "number": 11
+   },
+   "set": {
+    "_id": "630020e3cab8fa6d1490bb84",
+    "name": "2018 NASAT",
+    "year": 2018,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.469Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Math",
+   "number": 17,
+   "answer_sanitized": "two [or 2]",
+   "question_sanitized": "This number is the only value of p for which the normed space L p is also an inner product space. If any two points in a topological space can be separated by neighborhoods, the space is T sub this number, which means the space is Hausdorff. The smallest finite field has this number of elements, which is also the size of the smallest nontrivial group. The power set of X is denoted by raising this number to the X. A commonly taught example of proof by contradiction is to show that the square root of this number is irrational. This number is the Euler characteristic of a sphere, and for any convex polyhedron, it equals the number of vertices minus the number of edges plus the number of faces. For 10 points, give the number of points needed to uniquely define a line."
+  },
+  {
+   "_id": "630020e3cab8fa6d1490bff4",
+   "question": "The modular discriminant is proportional to this power of the Dedekind eta (AY-tuh) function. The Leech lattice exists in this number of dimensions and permits an unusually efficient solution to the sphere-packing problem. This number is the only nontrivial value of n such that the sum of the first n perfect squares is itself a perfect square. A four-dimensional hypercube has this many two-dimensional square faces, because this value is twice the number of faces plus the number of edges in a three-dimensional cube. This is the largest number that must divide the product of any four consecutive integers, as this constant is the denominator in the simplified formula for n-choose-4. For 10 points, identify this number equal to 4-factorial.",
+   "answer": "<b><u>24</u></b>",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "630020e3cab8fa6d1490bfec",
+    "name": "07",
+    "number": 7
+   },
+   "set": {
+    "_id": "630020e3cab8fa6d1490bee9",
+    "name": "2017 NASAT",
+    "year": 2017,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.463Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Math",
+   "number": 8,
+   "answer_sanitized": "24",
+   "question_sanitized": "The modular discriminant is proportional to this power of the Dedekind eta (AY-tuh) function. The Leech lattice exists in this number of dimensions and permits an unusually efficient solution to the sphere-packing problem. This number is the only nontrivial value of n such that the sum of the first n perfect squares is itself a perfect square. A four-dimensional hypercube has this many two-dimensional square faces, because this value is twice the number of faces plus the number of edges in a three-dimensional cube. This is the largest number that must divide the product of any four consecutive integers, as this constant is the denominator in the simplified formula for n-choose-4. For 10 points, identify this number equal to 4-factorial."
+  },
+  {
+   "_id": "62df3ddba2602b93e0408126",
+   "question": "The Smirnov metrization theorem asserts that a locally metrizable space must be a paracompact one of these in order to be metrizable. The real numbers in a topology with basis open intervals and open intervals minus the set of inverse positive integers is not regular, but it is this. Every simply ordered set is one of these spaces in the ordered topology. A space X is this if and only if the diagonal is closed in the product space X times X. In a space of this type, a sequence of points converges to at most one point. This class of topological space has the property that any two points have disjoint neighborhoods and thus possess finite subsets that are closed by the T2 separation axiom. For 10 points, what is this type of topological space, named for a mathematician also known for a concept of dimension often used for fractals?",
+   "answer": "<b><u>Hausdorff</u></b> space [or <b><u>T2</u></b> space before mentioned]",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "62df3ddba2602b93e040811a",
+    "name": "24",
+    "number": 24
+   },
+   "set": {
+    "_id": "62df3ddba2602b93e0407e5c",
+    "name": "2010 ACF Nationals",
+    "year": 2010,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T05:58:55.196Z",
+   "difficulty": 9,
+   "alternate_subcategory": "Math",
+   "number": 12,
+   "answer_sanitized": "Hausdorff space [or T2 space before mentioned]",
+   "question_sanitized": "The Smirnov metrization theorem asserts that a locally metrizable space must be a paracompact one of these in order to be metrizable. The real numbers in a topology with basis open intervals and open intervals minus the set of inverse positive integers is not regular, but it is this. Every simply ordered set is one of these spaces in the ordered topology. A space X is this if and only if the diagonal is closed in the product space X times X. In a space of this type, a sequence of points converges to at most one point. This class of topological space has the property that any two points have disjoint neighborhoods and thus possess finite subsets that are closed by the T2 separation axiom. For 10 points, what is this type of topological space, named for a mathematician also known for a concept of dimension often used for fractals?"
+  },
+  {
+   "_id": "635b6428d8a170d88c9e6ce8",
+   "question": "Steve’s class adds a spatial constraint to this class, and an open problem concerns whether Nick’s class equals this class. The Klee-Minty cubes show that the simplex method is not in this class, while Khachian’s ellipsoid method was the first example of a linear programming solution in this class. By Schaefer’s dichotomy theorem, the Boolean satisfiability theorem for both Horn and anti-Horn formulas is in this class, and for any formula is either in this complexity class or in NP-complete. This complexity class contains problems that can be solved by a deterministic Turing machine. For 10 points, name this class of problems that can be solved in polynomial time, which may or may not equal NP.",
+   "answer": "<b><u>P</u></b> [or early <b><u>polynomial time</u></b>]",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "635b6428d8a170d88c9e6ce5",
+    "name": "Editors 2 final",
+    "number": 6
+   },
+   "set": {
+    "_id": "635b6428d8a170d88c9e6c05",
+    "name": "2011 ACF Regionals",
+    "year": 2011,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.522Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Math",
+   "number": 3,
+   "answer_sanitized": "P [or early polynomial time]",
+   "question_sanitized": "Steve's class adds a spatial constraint to this class, and an open problem concerns whether Nick's class equals this class. The Klee-Minty cubes show that the simplex method is not in this class, while Khachian's ellipsoid method was the first example of a linear programming solution in this class. By Schaefer's dichotomy theorem, the Boolean satisfiability theorem for both Horn and anti-Horn formulas is in this class, and for any formula is either in this complexity class or in NP-complete. This complexity class contains problems that can be solved by a deterministic Turing machine. For 10 points, name this class of problems that can be solved in polynomial time, which may or may not equal NP."
+  },
+  {
+   "_id": "631a175612170ac0a81b97fc",
+   "question": "One person became interested in the workings of this thing after translating an article on it by Luigi Fenabrea. The creator of this thing worked with the engineer Joseph Clement, and George Scheutz completed the construction of this thing after its creator decided to pursue a career in politics instead of continuing to work on it. A series of treatises on this thing were published under the pseudonym A.A.L. This thing was originally created to assist with the production of the Royal Nautical Almanac, and funding for this thing was suspended by the British government in 1832 after progress on it stalled. This device was said to operate “as a Jacquard loom weaves patterns” by an expert in operating it. This device was famously analyzed by a woman who inherited a noble title from her father, Lord Byron. Ada Lovelace used punch cards to write programs for this device. For 10 points, name this predecessor to the computer invented by Charles Babbage.",
+   "answer": "<b><u>analytical engine</u></b> [accept <b><u>difference engine</u></b> or <b><u>Charles Babbage</u></b>'s <b><u>computer</u></b> or similar wordings until mention of Babbage; prompt on <u>computer</u>]",
+   "subcategory": "Other Science",
+   "category": "Science",
+   "packet": {
+    "_id": "631a175612170ac0a81b97fa",
+    "name": "05",
+    "number": 5
+   },
+   "set": {
+    "_id": "631a175612170ac0a81b974d",
+    "name": "2019 NASAT",
+    "year": 2019,
+    "standard": true
+   },
+   "updatedAt": "2024-05-13T17:35:39.153Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Computer Science",
+   "number": 2,
+   "answer_sanitized": "analytical engine [accept difference engine or Charles Babbage's computer or similar wordings until mention of Babbage; prompt on computer]",
+   "question_sanitized": "One person became interested in the workings of this thing after translating an article on it by Luigi Fenabrea. The creator of this thing worked with the engineer Joseph Clement, and George Scheutz completed the construction of this thing after its creator decided to pursue a career in politics instead of continuing to work on it. A series of treatises on this thing were published under the pseudonym A.A.L. This thing was originally created to assist with the production of the Royal Nautical Almanac, and funding for this thing was suspended by the British government in 1832 after progress on it stalled. This device was said to operate \"as a Jacquard loom weaves patterns\" by an expert in operating it. This device was famously analyzed by a woman who inherited a noble title from her father, Lord Byron. Ada Lovelace used punch cards to write programs for this device. For 10 points, name this predecessor to the computer invented by Charles Babbage."
+  },
+  {
+   "_id": "62eea92bec6a162496489550",
+   "question": "<b>A 2015 paper on these systems seeks to improve their performance speed by reducing internal covariate shift while eliminating the need for dropout with a technique that calculates the mean and variances of mini-batches; that technique is called batch-normalization. Infinite and finite are two subclasses of these systems within a variety that creates directed graphs within them; those are the recurrent form of these systems. The Python library keras builds these systems, and they can be built using the MLPClassifier in the scikit-learn library. (*)</b> ReLU is a linear activation function for these systems, whose outputs can be “squashed” using sigmoid functions. Gradient descent is performed on loss functions to update weights in these systems in the backpropagation technique. Layers of nodes form, for 10 points, what machine learning systems modeled on the human brain which “learn” how to do tasks?",
+   "answer": "<b><u>neural network</u></b>s [accept specific types like <b><u>recurrent network</u></b>s, <b><u>convolution neural network</u></b>s, or <b><u>artificial neural network</u></b>s]",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "62eea92bec6a16249648952a",
+    "name": "Lehmann Quadruplets",
+    "number": 7
+   },
+   "set": {
+    "_id": "62eea92bec6a162496489431",
+    "name": "2020 DECAMERON",
+    "year": 2020,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.357Z",
+   "difficulty": 7,
+   "alternate_subcategory": "Computer Science",
+   "number": 38,
+   "answer_sanitized": "neural networks [accept specific types like recurrent networks, convolution neural networks, or artificial neural networks]",
+   "question_sanitized": "A 2015 paper on these systems seeks to improve their performance speed by reducing internal covariate shift while eliminating the need for dropout with a technique that calculates the mean and variances of mini-batches; that technique is called batch-normalization. Infinite and finite are two subclasses of these systems within a variety that creates directed graphs within them; those are the recurrent form of these systems. The Python library keras builds these systems, and they can be built using the MLPClassifier in the scikit-learn library. (*) ReLU is a linear activation function for these systems, whose outputs can be \"squashed\" using sigmoid functions. Gradient descent is performed on loss functions to update weights in these systems in the backpropagation technique. Layers of nodes form, for 10 points, what machine learning systems modeled on the human brain which \"learn\" how to do tasks?"
+  },
+  {
+   "_id": "657fd7dade6df0163bbe3bd3",
+   "difficulty": 10,
+   "packet": {
+    "_id": "657fd7dade6df0163bbe3bc0",
+    "name": "8",
+    "number": 8
+   },
+   "set": {
+    "_id": "657fd7d7de6df0163bbe3b2c",
+    "name": "2023 EMACS",
+    "year": 2023,
+    "standard": false
+   },
+   "question": "<b>An optimization for this algorithm involves guessing the expected result within a set of bounds called an “aspiration window”. This algorithm produces PV-nodes, Cut-nodes, and All-nodes, which were originally named type 1, 2, and 3 by Donald Knuth. Assuming optimal visit order, this algorithm has time complexity b to the n over 2 instead of the worst-case b to the n, since you can skip every other layer by making the right choice first. This algorithm calls itself recursively while keeping track of upper and lower bounds, with each call toggling between a (*)</b> “maximizing” and a “minimizing” player. This algorithm improves on minimax by cutting off a branch of the search tree when it is discovered to be suboptimal. For 10 points, give this search algorithm commonly used in AIs for games like checkers or chess, named after two Greek letters.",
+   "answer": "<b><u>alpha-beta</u></b> pruning [or <b><u>alpha-beta</u></b> search; prompt on “<u>pruning</u>”; prompt on “tree <u>search</u>”; prompt on “<u>minimax</u> algorithm” before “minimax”]",
+   "updatedAt": "2023-12-22T21:10:12.751Z",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "alternate_subcategory": "Computer Science",
+   "number": 19,
+   "answer_sanitized": "alpha-beta pruning [or alpha-beta search; prompt on \"pruning\"; prompt on \"tree search\"; prompt on \"minimax algorithm\" before \"minimax\"]",
+   "question_sanitized": "An optimization for this algorithm involves guessing the expected result within a set of bounds called an \"aspiration window\". This algorithm produces PV-nodes, Cut-nodes, and All-nodes, which were originally named type 1, 2, and 3 by Donald Knuth. Assuming optimal visit order, this algorithm has time complexity b to the n over 2 instead of the worst-case b to the n, since you can skip every other layer by making the right choice first. This algorithm calls itself recursively while keeping track of upper and lower bounds, with each call toggling between a (*) \"maximizing\" and a \"minimizing\" player. This algorithm improves on minimax by cutting off a branch of the search tree when it is discovered to be suboptimal. For 10 points, give this search algorithm commonly used in AIs for games like checkers or chess, named after two Greek letters."
+  },
+  {
+   "_id": "657fd7d8de6df0163bbe3b4a",
+   "difficulty": 10,
+   "packet": {
+    "_id": "657fd7d7de6df0163bbe3b42",
+    "name": "2",
+    "number": 2
+   },
+   "set": {
+    "_id": "657fd7d7de6df0163bbe3b2c",
+    "name": "2023 EMACS",
+    "year": 2023,
+    "standard": false
+   },
+   "question": "<b>This country’s Coalition for Revolution, or CORE, movement urged for public demonstrations with the hashtag RevolutionNow. In a controversial tweet, a leader of this country said “Those of us…who went through the war, will treat them in the language they understand.” The richest person in this country threatened to sue Twitter user osvaldo12 for repeatedly trolling him with inane statements like “The solution to world hunger is eating”. A notorious police unit in this country called the Special Anti-Robbery Squad was the subject of widespread 2020 protests using the (*)</b> EndSARS hashtag, including one where police fired at unarmed civilians in Lekki. The hashtag BringBackOurGirls raised awareness of this country’s lack of response to a school kidnapping in Chibok. For 10 points, name this country that banned Twitter in 2021 after the deletion of some of president Muhammadu Buhari’s posts.",
+   "answer": "<b><u>Nigeria</u></b>",
+   "updatedAt": "2023-12-22T21:10:12.751Z",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "alternate_subcategory": "Computer Science",
+   "number": 8,
+   "answer_sanitized": "Nigeria",
+   "question_sanitized": "This country's Coalition for Revolution, or CORE, movement urged for public demonstrations with the hashtag RevolutionNow. In a controversial tweet, a leader of this country said \"Those of us...who went through the war, will treat them in the language they understand.\" The richest person in this country threatened to sue Twitter user osvaldo12 for repeatedly trolling him with inane statements like \"The solution to world hunger is eating\". A notorious police unit in this country called the Special Anti-Robbery Squad was the subject of widespread 2020 protests using the (*) EndSARS hashtag, including one where police fired at unarmed civilians in Lekki. The hashtag BringBackOurGirls raised awareness of this country's lack of response to a school kidnapping in Chibok. For 10 points, name this country that banned Twitter in 2021 after the deletion of some of president Muhammadu Buhari's posts."
+  }
+ ]
+}

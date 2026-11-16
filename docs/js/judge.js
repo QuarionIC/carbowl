@@ -5,6 +5,7 @@
 // speech recogniser writes names by ear ("kirk a guard"). An answer is accepted if either accepts.
 
 import { soundSimilarity } from './phonetics.js';
+import { numberVariants, canonNumbers, numberTokens, digitsToWords } from './numbers.js';
 
 const DIRECTIVES = {
   accept: ['accept', 'or', 'antiprompt on', 'anti-prompt on', 'antiprompt', 'anti-prompt', 'also accept'],
@@ -14,8 +15,19 @@ const DIRECTIVES = {
 const ALL_DIRECTIVES = Object.values(DIRECTIVES).flat();
 const startsWithPhrase = (s, phrase) => s.startsWith(phrase) && (s.length === phrase.length || /[\s:,"'<(]/.test(s[phrase.length]));
 
-function normalize (s) {
+/**
+ * Names that are written with symbols are said as words ("C++" is "C plus plus", "C#" is "C sharp",
+ * "A*" is "A star"). Without this the symbols are simply dropped and "C" alone would match.
+ */
+export function symbolNames (s) {
   return String(s == null ? '' : s)
+    .replace(/\b([A-Za-z][A-Za-z0-9]*)\+\+/g, '$1 plus plus')
+    .replace(/\b([A-Ga-gJj])#/g, '$1 sharp').replace(/#([A-Z])\b/g, 'sharp $1')
+    .replace(/\b([Aa])\*/g, '$1 star');
+}
+
+function normalize (s) {
+  return symbolNames(s)
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
     .toLowerCase()
     .replace(/ø/g, 'o').replace(/æ/g, 'ae').replace(/œ/g, 'oe').replace(/ß/g, 'ss').replace(/ł/g, 'l').replace(/đ/g, 'd').replace(/þ/g, 'th').replace(/ð/g, 'd')
@@ -28,7 +40,8 @@ function normalize (s) {
     .replace(/<\/?(i|em)>/g, '');
 }
 const stripTags = s => s.replace(/<[^>]*>/g, '');
-const plain = s => stripTags(s).replace(/[^a-z0-9' -]+/g, ' ').replace(/\s+/g, ' ').trim();
+// A decimal point or a fraction bar between digits is part of the number, not punctuation.
+const plain = s => stripTags(s).replace(/(\d)\.(?=\d)/g, '$1 point ').replace(/(\d)\/(?=\d)/g, '$1 over ').replace(/[^a-z0-9' -]+/g, ' ').replace(/\s+/g, ' ').trim();
 
 function underlined (s) {
   const m = s.match(/<u>[\s\S]*?<\/u>/g);
@@ -213,8 +226,18 @@ export function judgeAnswer ({ answerline, transcripts, checkAnswer, threshold =
       if (pn && norm) { variants.add(`${pn} ${norm}`); variants.add(`${norm} ${pn}`); }
     }
   }
+  // Spoken numbers also in digits ("twenty four" as "24"), which is how answer lines write them.
+  for (const v of [...variants]) for (const n of numberVariants(v)) variants.add(n);
   const parsed = parseAnswerline(answerline);
-  const official = stripConditions(answerline);
+  // For the comparison by sound every phrase has its numbers in words, and its numbers noted in
+  // digits: where both sides name numbers they must be the same numbers ("root 2" is not "root 3").
+  const bySound = new Map();
+  const soundForm = phrase => {
+    let f = bySound.get(phrase);
+    if (!f) { const canon = canonNumbers(phrase); f = { words: digitsToWords(canon), numbers: numberTokens(canon) }; bySound.set(phrase, f); }
+    return f;
+  };
+  const official = symbolNames(stripConditions(answerline));
   let result = { directive: 'reject', heard, method: 'none', score: 0 };
   const better = cand => {
     if (RANK[cand.directive] > RANK[result.directive] || (cand.directive === result.directive && cand.score > result.score)) result = { ...cand, heard };
@@ -230,11 +253,15 @@ export function judgeAnswer ({ answerline, transcripts, checkAnswer, threshold =
       } catch (e) { /* fall through to the sound judge */ }
     }
     // Judge 2: by sound.
-    const tokens = v.split(' ').filter(Boolean);
+    const canonHeard = canonNumbers(v);
+    const heardNumbers = numberTokens(canonHeard);
+    const tokens = digitsToWords(canonHeard).split(' ').filter(Boolean);
     const top = { accept: { score: 0 }, prompt: { score: 0 }, reject: { score: 0 } };
     for (const clause of parsed.clauses) {
       for (const phrase of clause.phrases) {
-        const m = bestWindowMatch(tokens, phrase);
+        const form = soundForm(phrase);
+        if (form.numbers.length && heardNumbers.length && !form.numbers.every(x => heardNumbers.includes(x))) continue;
+        const m = bestWindowMatch(tokens, form.words);
         if (m.score > top[clause.directive].score) top[clause.directive] = { score: m.score, phrase, window: m.window, directedPrompt: clause.directedPrompt };
       }
     }

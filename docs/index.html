@@ -20,25 +20,33 @@
   <header class="top">
     <h1>Carbowl</h1>
     <div class="score" id="score" aria-label="Score"></div>
-    <button class="icon" id="openReview" aria-label="Review this session" title="Review"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h10v2H4z"/></svg></button>
+    <button class="icon" id="openReview" aria-label="Review: this session and earlier ones" title="Review"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h10v2H4z"/></svg></button>
     <button class="icon" id="openSettings" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 13a7.5 7.5 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.6 7.6 0 0 0-1.7-1L15 3.5h-4l-.4 2.5a7.600 7.600 0 0 0-1.700 1l-2.400-1-2 3.400L6.600 11a7.500 7.500 0 0 0 0 2l-2 1.600 2 3.400 2.400-1c.5.400 1.100.700 1.700 1l.4 2.500h4l.4-2.500c.6-.300 1.200-.600 1.700-1l2.400 1 2-3.400zM13 15.500a3.500 3.500 0 1 1 0-7 3.500 3.500 0 0 1 0 7z"/></svg></button>
   </header>
 
+  <!-- Three bands that never overlap: the verdict stays on top, the question scrolls in the
+       middle, and the answer sits underneath it. -->
   <main class="stage" id="stage">
-    <p class="meta" id="meta"></p>
-    <p class="status" id="status" role="status" aria-live="polite">Loading…</p>
-    <div class="progress" id="progress" hidden><i id="progressFill"></i><b id="powerMark" hidden title="Power mark"></b></div>
-    <div class="qtext" id="qtext"></div>
-    <div class="answer" id="answer" hidden></div>
-    <p class="heard" id="heard"></p>
-
-    <section class="setup" id="setup" hidden>
-      <h2 id="setupTitle">Speech models</h2>
-      <p id="setupText"></p>
-      <div class="bar" id="setupBar" hidden><i id="setupFill"></i></div>
-      <p class="fine" id="setupFine"></p>
-      <button class="btn primary" id="setupBtn">Download</button>
-    </section>
+    <div class="stage-head">
+      <p class="meta" id="meta"></p>
+      <p class="status" id="status" role="status" aria-live="polite">Loading…</p>
+      <div class="progress" id="progress" hidden><i id="progressFill"></i><b id="powerMark" hidden title="Power mark"></b></div>
+    </div>
+    <div class="stage-body" id="stageBody">
+      <div class="qtext" id="qtext"></div>
+      <section class="topics" id="topics" hidden></section>
+      <section class="setup" id="setup" hidden>
+        <h2 id="setupTitle">Speech models</h2>
+        <p id="setupText"></p>
+        <div class="bar" id="setupBar" hidden><i id="setupFill"></i></div>
+        <p class="fine" id="setupFine"></p>
+        <button class="btn primary" id="setupBtn">Download</button>
+      </section>
+    </div>
+    <div class="stage-foot" id="stageFoot">
+      <div class="answer" id="answer" hidden></div>
+      <p class="heard" id="heard"></p>
+    </div>
   </main>
 
   <div class="mic" id="mic">
@@ -77,7 +85,7 @@
 <dialog class="sheet" id="review" aria-labelledby="reviewTitle">
   <form method="dialog" class="sheet-in">
     <header class="sheet-top">
-      <h2 id="reviewTitle">This session</h2>
+      <h2 id="reviewTitle">Review</h2>
       <button class="btn primary" value="close">Done</button>
     </header>
     <div class="sheet-body" id="reviewBody"></div>

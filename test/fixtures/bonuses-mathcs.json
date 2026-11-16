@@ -1,0 +1,1114 @@
+{
+ "bonuses": [
+  {
+   "_id": "660a2cfb38190d8ac17b45a9",
+   "difficulty": 8,
+   "packet": {
+    "_id": "660a2cfb38190d8ac17b4587",
+    "name": "14 Editor's 1",
+    "number": 14
+   },
+   "set": {
+    "_id": "660a2cf538190d8ac17b4364",
+    "name": "2017 WAO II",
+    "year": 2017,
+    "standard": true
+   },
+   "leadin": "A variant of these objects which does not possess an identity element is sometimes spelt without the “i” to indicate this. For 10 points each:",
+   "parts": [
+    "Name these algebraic structures that are closed under their addition and multiplication operations, but might not necessarily have inverses under multiplication.",
+    "The central theorem of algebraic geometry, the Nullstellensatz, relates affine varieties to the ideals of rings of these objects. If all of these over some field have solutions in that field, then that field is algebraically closed.",
+    "The Nullstellensatz was first proven by this mathematician. This mathematician also names a formal logic system with only a single inference rule, in contrast to the sequent calculus and natural deduction systems."
+   ],
+   "answers": [
+    "<b><u>ring</u></b>",
+    "<b><u>polynomial</u></b>s",
+    "David <b><u>Hilbert</u></b>"
+   ],
+   "updatedAt": "2025-02-08T02:21:54.511Z",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "alternate_subcategory": "Math",
+   "values": [
+    10,
+    10,
+    10
+   ],
+   "number": 13,
+   "answers_sanitized": [
+    "ring",
+    "polynomials",
+    "David Hilbert"
+   ],
+   "leadin_sanitized": "A variant of these objects which does not possess an identity element is sometimes spelt without the \"i\" to indicate this. For 10 points each:",
+   "parts_sanitized": [
+    "Name these algebraic structures that are closed under their addition and multiplication operations, but might not necessarily have inverses under multiplication.",
+    "The central theorem of algebraic geometry, the Nullstellensatz, relates affine varieties to the ideals of rings of these objects. If all of these over some field have solutions in that field, then that field is algebraically closed.",
+    "The Nullstellensatz was first proven by this mathematician. This mathematician also names a formal logic system with only a single inference rule, in contrast to the sequent calculus and natural deduction systems."
+   ]
+  },
+  {
+   "_id": "66b83d75e381fe913c42f82f",
+   "leadin": "The Alexandroff extension of a topological space <i>X</i> is Hausdorff if and only if <i>X</i> is Hausdorff and has this property. For 10 points each:",
+   "leadin_sanitized": "The Alexandroff extension of a topological space X is Hausdorff if and only if X is Hausdorff and has this property. For 10 points each:",
+   "parts": [
+    "Name this topological property of groups that admit a notion of Fourier analysis.",
+    "When <i>X</i> is not Hausdorff, the Alexandroff one-point compactification is less useful than a compactification denoted “beta <i>X</i>,” constructed by an American and this mathematician. This developer of a cohomology theory based on nerve complexes was the first to publish a proof of Tychonoff’s theorem.",
+    "Čech cohomology is obtained via this relationship to Čech homology. Fourier analysis employs a “Pontryagin” form of this correspondence between two objects, which is used in graph theory to interchange vertices and faces."
+   ],
+   "parts_sanitized": [
+    "Name this topological property of groups that admit a notion of Fourier analysis.",
+    "When X is not Hausdorff, the Alexandroff one-point compactification is less useful than a compactification denoted \"beta X,\" constructed by an American and this mathematician. This developer of a cohomology theory based on nerve complexes was the first to publish a proof of Tychonoff's theorem.",
+    "Cech cohomology is obtained via this relationship to Cech homology. Fourier analysis employs a \"Pontryagin\" form of this correspondence between two objects, which is used in graph theory to interchange vertices and faces."
+   ],
+   "answers": [
+    "<b><u>local compactness</u></b> [or <b><u>locally compact</u></b>; reject “compact”]",
+    "Eduard <b><u>Čech</u></b> (“check”) [prompt on <u>Stone–Čech</u> compactification]",
+    "<b><u>dual</u></b>ity [or word forms such as <b><u>dual</u></b>izing; accept Pontryagin <b><u>dual</u></b>ity]"
+   ],
+   "answers_sanitized": [
+    "local compactness [or locally compact; reject \"compact\"]",
+    "Eduard Cech (\"check\") [prompt on Stone-Cech compactification]",
+    "duality [or word forms such as dualizing; accept Pontryagin duality]"
+   ],
+   "updatedAt": "2024-08-11T04:26:29.891Z",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "alternate_subcategory": "Math",
+   "values": [
+    10,
+    10,
+    10
+   ],
+   "difficultyModifiers": [
+    "h",
+    "m",
+    "e"
+   ],
+   "number": 13,
+   "difficulty": 10,
+   "packet": {
+    "_id": "66b83d75e381fe913c42f80e",
+    "name": "H. Editors 2",
+    "number": 8
+   },
+   "set": {
+    "_id": "66b83d71e381fe913c42f6ee",
+    "name": "2024 Chicago Open",
+    "year": 2024,
+    "standard": true
+   }
+  },
+  {
+   "_id": "699e2ae97a0803cad64e4272",
+   "leadin": "Young’s inequality is used to prove this other inequality, which reduces to the Cauchy-Schwarz inequality when “<i>p</i> equals <i>q</i> equals two.” For 10 points each:",
+   "leadin_sanitized": "Young's inequality is used to prove this other inequality, which reduces to the Cauchy-Schwarz inequality when \"p equals q equals two.\" For 10 points each:",
+   "parts": [
+    "Name this ubiquitous inequality in analysis, which states that the <i>L</i>1 (“L-one”) norm of “<i>f</i> times <i>g</i>” is less than or equal to “the <i>Lp</i> (“L-p”) norm of <i>f</i>” times “the <i>Lq</i> (“L-q”) norm of <i>g</i>,” where “one over <i>p</i>” plus “one over <i>q</i>” is one.",
+    "The Riesz-Thorin theorem, which concerns this task for operators, is proved by using Hölder’s inequality with suitably chosen conjugate exponents. Runge’s phenomenon can arise when using polynomials for this task.",
+    "Hölder’s inequality is used to prove Minkowski’s inequality, which is this statement for <i>Lp</i> (“L-p”) spaces. For vectors <i>x</i> and <i>y</i>, this inequality states that the length of “<i>x</i> plus <i>y</i>” cannot exceed the sum of their individual lengths."
+   ],
+   "parts_sanitized": [
+    "Name this ubiquitous inequality in analysis, which states that the L1 (\"L-one\") norm of \"f times g\" is less than or equal to \"the Lp (\"L-p\") norm of f\" times \"the Lq (\"L-q\") norm of g,\" where \"one over p\" plus \"one over q\" is one.",
+    "The Riesz-Thorin theorem, which concerns this task for operators, is proved by using Holder's inequality with suitably chosen conjugate exponents. Runge's phenomenon can arise when using polynomials for this task.",
+    "Holder's inequality is used to prove Minkowski's inequality, which is this statement for Lp (\"L-p\") spaces. For vectors x and y, this inequality states that the length of \"x plus y\" cannot exceed the sum of their individual lengths."
+   ],
+   "answers": [
+    "<b><u>Hölder</u></b>'s inequality",
+    "<b><u>interpolation</u></b> [or word forms like <b><u>interpolating</u></b>; prompt on <u>estimation</u> or <u>imputation</u> or word forms]",
+    "<b><u>triangle</u></b> inequality"
+   ],
+   "answers_sanitized": [
+    "Holder's inequality",
+    "interpolation [or word forms like interpolating; prompt on estimation or imputation or word forms]",
+    "triangle inequality"
+   ],
+   "updatedAt": "2026-02-24T22:49:13.077Z",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "alternate_subcategory": "Math",
+   "values": [
+    10,
+    10,
+    10
+   ],
+   "difficultyModifiers": [
+    "h",
+    "m",
+    "e"
+   ],
+   "number": 4,
+   "difficulty": 9,
+   "packet": {
+    "_id": "699e2ae87a0803cad64e4258",
+    "name": "07",
+    "number": 7
+   },
+   "set": {
+    "_id": "699e2ae37a0803cad64e4149",
+    "name": "2025 NAFTA",
+    "year": 2025,
+    "standard": true
+   }
+  },
+  {
+   "_id": "62e0ada5f59865e1289cb059",
+   "leadin": "The OpenAtom molecular dynamics / quantum chemistry application was written using this framework. For 10 points each:",
+   "parts": [
+    "Name this extension of C++ developed by students under Laximant Kale at the University of Illinois. It is often used in parallel applications in scientific research.",
+    "So-called \"Chares\" features in Charm++ endow it with qualities from this programming paradigm, which emphasizes human readable code written in the namesake instantiations of classes. This paradigm enforces abstraction and polymorphism.",
+    "Another parallel object-oriented API, CUDA, was developed by this company and is designed to be run on its graphics cards. This company's OptiX engine is supposedly a real-time ray-tracing API."
+   ],
+   "answers": [
+    "<b><u>Charm++</u></b>",
+    "<b><u>object-oriented</u></b> programming",
+    "<b><u>Nvidia</u></b>"
+   ],
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "62e0ada5f59865e1289cb02e",
+    "name": "Ike_Wang + Oxford",
+    "number": 8
+   },
+   "set": {
+    "_id": "62e0ada5f59865e1289caefc",
+    "name": "2017 WAO",
+    "year": 2017,
+    "standard": true
+   },
+   "updatedAt": "2025-02-08T02:21:58.905Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Computer Science",
+   "number": 21,
+   "answers_sanitized": [
+    "Charm++",
+    "object-oriented programming",
+    "Nvidia"
+   ],
+   "leadin_sanitized": "The OpenAtom molecular dynamics / quantum chemistry application was written using this framework. For 10 points each:",
+   "parts_sanitized": [
+    "Name this extension of C++ developed by students under Laximant Kale at the University of Illinois. It is often used in parallel applications in scientific research.",
+    "So-called \"Chares\" features in Charm++ endow it with qualities from this programming paradigm, which emphasizes human readable code written in the namesake instantiations of classes. This paradigm enforces abstraction and polymorphism.",
+    "Another parallel object-oriented API, CUDA, was developed by this company and is designed to be run on its graphics cards. This company's OptiX engine is supposedly a real-time ray-tracing API."
+   ]
+  },
+  {
+   "_id": "635b6428d8a170d88c9e7054",
+   "leadin": "If these are formed from open sets of a set then they are called Borel. For 10 points each:",
+   "parts": [
+    "Name this collection of subsets of a set X that contains the empty set, is closed under complementation and is closed under countable union.",
+    "Sets in Borel sigma algebras of the real line can be assigned a Lebesgue one of these functions. They give a generalized notion of the length of a subset of the real line.",
+    "Lebesgue’s measure theory gives a way to define this operation. This is the opposite operation to differentiating a function."
+   ],
+   "answers": [
+    "<b><u>sigma algebra</u></b>",
+    "<b><u>measure</u></b>",
+    "<b><u>integrating</u></b> [or <b><u>integral</u></b>]"
+   ],
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "635b6428d8a170d88c9e7034",
+    "name": "Minnesota A",
+    "number": 8
+   },
+   "set": {
+    "_id": "635b6428d8a170d88c9e6f00",
+    "name": "2012 ACF Regionals",
+    "year": 2012,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.511Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Math",
+   "number": 10,
+   "answers_sanitized": [
+    "sigma algebra",
+    "measure",
+    "integrating [or integral]"
+   ],
+   "leadin_sanitized": "If these are formed from open sets of a set then they are called Borel. For 10 points each:",
+   "parts_sanitized": [
+    "Name this collection of subsets of a set X that contains the empty set, is closed under complementation and is closed under countable union.",
+    "Sets in Borel sigma algebras of the real line can be assigned a Lebesgue one of these functions. They give a generalized notion of the length of a subset of the real line.",
+    "Lebesgue's measure theory gives a way to define this operation. This is the opposite operation to differentiating a function."
+   ]
+  },
+  {
+   "_id": "6326bf0e692d593d1d7a86b6",
+   "leadin": "An error-correcting code allows messages to be sent and understood over a noisy channel. For 10 points each:",
+   "parts": [
+    "Error-correction theory uses this term for the minimum number of bit changes between acceptable code words. In other contexts, the Manhattan and Euclidean metrics compute this measure of physical separation between points.",
+    "This linear code invented at Bell Labs achieves the greatest possible code rate for a distance of three. Its seven-four variant includes three error-detecting bits at positions one, two, and four of a seven-bit code word.",
+    "The error-detecting bits in the Hamming code track this property of the binary code word. The simplest possible code uses one bit to track this property, and can thus detect, but not correct, a single bit-flip error."
+   ],
+   "answers": [
+    "distance [accept Hamming distance or Manhattan distance or Euclidean distance]",
+    "Hamming code",
+    "parity [accept parity bit or check bit; accept “whether the total number of 1s is even or odd”; prompt on check or evenness or oddness]"
+   ],
+   "subcategory": "Other Science",
+   "category": "Science",
+   "packet": {
+    "_id": "6326bf0e692d593d1d7a869a",
+    "name": "D. Wright State A + UIUC B + Chicago C",
+    "number": 4
+   },
+   "set": {
+    "_id": "6326bf0e692d593d1d7a861e",
+    "name": "2018 ACF Regionals",
+    "year": 2018,
+    "standard": true
+   },
+   "updatedAt": "2023-09-15T19:31:38.836Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Computer Science",
+   "number": 8,
+   "answers_sanitized": [
+    "distance [accept Hamming distance or Manhattan distance or Euclidean distance]",
+    "Hamming code",
+    "parity [accept parity bit or check bit; accept \"whether the total number of 1s is even or odd\"; prompt on check or evenness or oddness]"
+   ],
+   "leadin_sanitized": "An error-correcting code allows messages to be sent and understood over a noisy channel. For 10 points each:",
+   "parts_sanitized": [
+    "Error-correction theory uses this term for the minimum number of bit changes between acceptable code words. In other contexts, the Manhattan and Euclidean metrics compute this measure of physical separation between points.",
+    "This linear code invented at Bell Labs achieves the greatest possible code rate for a distance of three. Its seven-four variant includes three error-detecting bits at positions one, two, and four of a seven-bit code word.",
+    "The error-detecting bits in the Hamming code track this property of the binary code word. The simplest possible code uses one bit to track this property, and can thus detect, but not correct, a single bit-flip error."
+   ]
+  },
+  {
+   "_id": "6414e1a1d83c2db5e169c17c",
+   "leadin": "This shape is an ellipse with coincident foci and an eccentricity of zero. For 10 points each",
+   "parts": [
+    "Give this shape generated by the cartesian equation: x2 + y2 = r2.",
+    "The embedding of a circle into 3D Euclidean space generates one of these structures. Two of these structures are equivalent to one another if there is ambient isotopy between them.",
+    "One can perform these three eponymous actions to prove that two knot diagrams correspond to equivalent knots. They comprise: untwisting, moving a loop over another, and moving a string over or under a crossing."
+   ],
+   "answers": [
+    "<b><u>Circle</u></b>",
+    "<b><u>Knot</u></b>",
+    "<b><u>Reidemeister</u></b> moves"
+   ],
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "6414e1a1d83c2db5e169c156",
+    "name": "13 - Editors 7",
+    "number": 13
+   },
+   "set": {
+    "_id": "6414e1a1d83c2db5e169bf5d",
+    "name": "2017 Oxford Open",
+    "year": 2017,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.597Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Math",
+   "number": 17,
+   "answers_sanitized": [
+    "Circle",
+    "Knot",
+    "Reidemeister moves"
+   ],
+   "leadin_sanitized": "This shape is an ellipse with coincident foci and an eccentricity of zero. For 10 points each",
+   "parts_sanitized": [
+    "Give this shape generated by the cartesian equation: x2 + y2 = r2.",
+    "The embedding of a circle into 3D Euclidean space generates one of these structures. Two of these structures are equivalent to one another if there is ambient isotopy between them.",
+    "One can perform these three eponymous actions to prove that two knot diagrams correspond to equivalent knots. They comprise: untwisting, moving a loop over another, and moving a string over or under a crossing."
+   ]
+  },
+  {
+   "_id": "63059e1643cf0201876236ce",
+   "leadin": "This computer scientist developed a namesake “91 function” that is used in formal verification methods. For 10 points each:",
+   "parts": [
+    "Name this man who developed the paradigm of logic programming. His other achievements include introducing situation calculus to model the real world.",
+    "John McCarthy coined this term for the study of computer programs that are able to sense their environment and choose a strategy that maximizes their chances of success. Computer robotics and machine learning are two subfields of this discipline.",
+    "McCarthy organized the Dartmouth Conferences with a slew of other scientists, including this mathematician, who is colloquially known as “the father of information theory.”"
+   ],
+   "answers": [
+    "John <b><u>McCarthy</u></b>",
+    "<b><u>a</u></b>rtificial <b><u>i</u></b>ntelligence",
+    "Claude <b><u>Shannon</u></b>"
+   ],
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "63059e1643cf0201876236a7",
+    "name": "13",
+    "number": 13
+   },
+   "set": {
+    "_id": "63059e1543cf0201876234ad",
+    "name": "2013 DRAGOON",
+    "year": 2013,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.472Z",
+   "difficulty": 7,
+   "alternate_subcategory": "Computer Science",
+   "number": 18,
+   "answers_sanitized": [
+    "John McCarthy",
+    "artificial intelligence",
+    "Claude Shannon"
+   ],
+   "leadin_sanitized": "This computer scientist developed a namesake \"91 function\" that is used in formal verification methods. For 10 points each:",
+   "parts_sanitized": [
+    "Name this man who developed the paradigm of logic programming. His other achievements include introducing situation calculus to model the real world.",
+    "John McCarthy coined this term for the study of computer programs that are able to sense their environment and choose a strategy that maximizes their chances of success. Computer robotics and machine learning are two subfields of this discipline.",
+    "McCarthy organized the Dartmouth Conferences with a slew of other scientists, including this mathematician, who is colloquially known as \"the father of information theory.\""
+   ]
+  },
+  {
+   "_id": "6361f475f6f73d137db463ec",
+   "leadin": "If a torsion-free group has a subgroup with finite index and this property, then that group also has this property. For 10 points each:",
+   "parts": [
+    "Identify this property held by groups with a single generator.",
+    "Cyclic groups are abelian, meaning that the binary operation over which they are defined has this property. Addition has this property, but subtraction does not.",
+    "Given a subset S of a group G, this term is used to refer to the subgroup comprised of the elements of G which commute with all elements of S. The order of this subgroup for an element a is equal to the number of elements in the conjugacy class of a according to the class equation."
+   ],
+   "answers": [
+    "<b><u>cyclic</u></b>ity",
+    "<b><u>commutativity</u></b> [accept word forms such as commutative]",
+    "<b><u>centralizer</u></b> [also accept <b><u>commutant</u></b>]"
+   ],
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "6361f475f6f73d137db463d2",
+    "name": "02",
+    "number": 2
+   },
+   "set": {
+    "_id": "6361f475f6f73d137db463a8",
+    "name": "2019 Spartan Housewrite",
+    "year": 2019,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.503Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Math",
+   "number": 6,
+   "answers_sanitized": [
+    "cyclicity",
+    "commutativity [accept word forms such as commutative]",
+    "centralizer [also accept commutant]"
+   ],
+   "leadin_sanitized": "If a torsion-free group has a subgroup with finite index and this property, then that group also has this property. For 10 points each:",
+   "parts_sanitized": [
+    "Identify this property held by groups with a single generator.",
+    "Cyclic groups are abelian, meaning that the binary operation over which they are defined has this property. Addition has this property, but subtraction does not.",
+    "Given a subset S of a group G, this term is used to refer to the subgroup comprised of the elements of G which commute with all elements of S. The order of this subgroup for an element a is equal to the number of elements in the conjugacy class of a according to the class equation."
+   ]
+  },
+  {
+   "_id": "697ffd33ebd24347285478ad",
+   "leadin": "An algebra over a field consists of a “space” named for these objects that has a bilinear product. For 10 points each:",
+   "leadin_sanitized": "An algebra over a field consists of a \"space\" named for these objects that has a bilinear product. For 10 points each:",
+   "parts": [
+    "Name these objects that have a magnitude and direction.",
+    "This mathematician names a non-associative algebra that pairs a vector space with his namesake commutator bracket denoted “<i>x</i> <i>y</i> minus <i>y</i> <i>x</i>.” This mathematician names groups that are also differentiable manifolds.",
+    "This adjective is prefixed by “semi” to describe Lie algebras that have a non-degenerate Killing form. Lie algebras described by this adjective are non-abelian (“non-uh-BEE-lee-un”) and contain no non-zero proper ideals."
+   ],
+   "parts_sanitized": [
+    "Name these objects that have a magnitude and direction.",
+    "This mathematician names a non-associative algebra that pairs a vector space with his namesake commutator bracket denoted \"x y minus y x.\" This mathematician names groups that are also differentiable manifolds.",
+    "This adjective is prefixed by \"semi\" to describe Lie algebras that have a non-degenerate Killing form. Lie algebras described by this adjective are non-abelian (\"non-uh-BEE-lee-un\") and contain no non-zero proper ideals."
+   ],
+   "answers": [
+    "<b><u>vector</u></b>s [accept <b><u>vector</u></b> spaces]",
+    "Sophus <b><u>Lie</u></b> (“lee”) [or Marius Sophus <b><u>Lie</u></b>; accept <b><u>Lie</u></b> groups; accept <b><u>Lie</u></b> bracket; accept <b><u>Lie</u></b> algebra]",
+    "<b><u>simple</u></b> [accept <b><u>simple</u></b> Lie algebras; accept semi<b><u>simple</u></b> Lie algebras]"
+   ],
+   "answers_sanitized": [
+    "vectors [accept vector spaces]",
+    "Sophus Lie (\"lee\") [or Marius Sophus Lie; accept Lie groups; accept Lie bracket; accept Lie algebra]",
+    "simple [accept simple Lie algebras; accept semisimple Lie algebras]"
+   ],
+   "updatedAt": "2026-02-05T01:44:09.175Z",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "alternate_subcategory": "Math",
+   "values": [
+    10,
+    10,
+    10
+   ],
+   "difficultyModifiers": [
+    "e",
+    "m",
+    "h"
+   ],
+   "number": 2,
+   "difficulty": 8,
+   "packet": {
+    "_id": "697ffd33ebd2434728547897",
+    "name": "E - Chicago A, Toronto B, Brandeis B, JHU A",
+    "number": 5
+   },
+   "set": {
+    "_id": "697ffd32ebd24347285477f2",
+    "name": "2026 ACF Regionals",
+    "year": 2026,
+    "standard": true
+   }
+  },
+  {
+   "_id": "62ede294c53e50a05136364d",
+   "leadin": "Intuitively, this operation is a coordinate-independent derivative of its second argument with respect to its first argument. For 10 points each:",
+   "parts": [
+    "Name this alternating bilinear operation, typically written as the commutator of a pair of vector fields. It vanishes if and only if each field is invariant under the flow of the other.",
+    "The Lie bracket defines the structure of a Lie algebra, which in turn corresponds to a differentiable one of these objects. They are sets equipped with an associative, invertible binary operation.",
+    "The group named for this object is the unique one-parameter, compact, connected Lie group. In topology, this object is called “S-superscript-1” and is the one-point compactification of the open unit interval."
+   ],
+   "answers": [
+    "<b><u>Lie</u></b> (“lee”)<b><u>bracket</u></b> [prompt on partial answer; prompt on <u>Lie derivative</u>]",
+    "<b><u>group</u></b>s [accept Lie <b><u>group</u></b>s]",
+    "unit <b><u>circle</u></b> [accept <b><u>circle</u></b> group; accept <b><u>1-sphere</u></b>; reject “sphere”]"
+   ],
+   "subcategory": "Other Science",
+   "category": "Science",
+   "packet": {
+    "_id": "62ede294c53e50a051363625",
+    "name": "Tiebreaker",
+    "number": 23
+   },
+   "set": {
+    "_id": "62ede294c53e50a05136329e",
+    "name": "2022 ACF Nationals",
+    "year": 2022,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.273Z",
+   "difficulty": 9,
+   "alternate_subcategory": "Math",
+   "number": 20,
+   "answers_sanitized": [
+    "Lie (\"lee\")bracket [prompt on partial answer; prompt on Lie derivative]",
+    "groups [accept Lie groups]",
+    "unit circle [accept circle group; accept 1-sphere; reject \"sphere\"]"
+   ],
+   "leadin_sanitized": "Intuitively, this operation is a coordinate-independent derivative of its second argument with respect to its first argument. For 10 points each:",
+   "parts_sanitized": [
+    "Name this alternating bilinear operation, typically written as the commutator of a pair of vector fields. It vanishes if and only if each field is invariant under the flow of the other.",
+    "The Lie bracket defines the structure of a Lie algebra, which in turn corresponds to a differentiable one of these objects. They are sets equipped with an associative, invertible binary operation.",
+    "The group named for this object is the unique one-parameter, compact, connected Lie group. In topology, this object is called \"S-superscript-1\" and is the one-point compactification of the open unit interval."
+   ]
+  },
+  {
+   "_id": "630020e3cab8fa6d1490c16a",
+   "leadin": "These objects often form a basis for the vector space acted on by a linear transformation. For 10 points each:",
+   "parts": [
+    "Identify these special vectors whose direction does not change when the linear transformation is applied. When the transformation is represented by a matrix, multiplying these vectors by the matrix gives the same result as multiplying them by some special constants.",
+    "The spectral theorems give conditions under which a matrix has this property. A matrix has this property when it can be written as P times D times P-inverse, where P is an invertible square matrix and D is the namesake type of matrix; the eigenvectors of the original matrix form the columns of P.",
+    "If the linear transformation D represents differentiation with respect to x, this function f is an eigenvector because D f is equal to f. This function has an eigenvalue of one since its derivative is equal to f of x itself."
+   ],
+   "answers": [
+    "<b><u>eigenvectors</u></b> [or <b><u>characteristic vectors</u></b>]",
+    "<b><u>diagonalizable</u></b> [accept word forms like <b><u>diagonalization</u></b>]",
+    "<b><u>exp</u></b>onential function [or <b><u>e to the x</u></b> power; accept any <b><u>constant times e to the x</u></b> where \"constant\" may be replaced with a variable or real number]"
+   ],
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "630020e3cab8fa6d1490c144",
+    "name": "15",
+    "number": 15
+   },
+   "set": {
+    "_id": "630020e3cab8fa6d1490bee9",
+    "name": "2017 NASAT",
+    "year": 2017,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.463Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Math",
+   "number": 17,
+   "answers_sanitized": [
+    "eigenvectors [or characteristic vectors]",
+    "diagonalizable [accept word forms like diagonalization]",
+    "exponential function [or e to the x power; accept any constant times e to the x where \"constant\" may be replaced with a variable or real number]"
+   ],
+   "leadin_sanitized": "These objects often form a basis for the vector space acted on by a linear transformation. For 10 points each:",
+   "parts_sanitized": [
+    "Identify these special vectors whose direction does not change when the linear transformation is applied. When the transformation is represented by a matrix, multiplying these vectors by the matrix gives the same result as multiplying them by some special constants.",
+    "The spectral theorems give conditions under which a matrix has this property. A matrix has this property when it can be written as P times D times P-inverse, where P is an invertible square matrix and D is the namesake type of matrix; the eigenvectors of the original matrix form the columns of P.",
+    "If the linear transformation D represents differentiation with respect to x, this function f is an eigenvector because D f is equal to f. This function has an eigenvalue of one since its derivative is equal to f of x itself."
+   ]
+  },
+  {
+   "_id": "62df7ca243aee49db2f76a8a",
+   "leadin": "Answer some questions about the Birch and Swinnerton-Dyer conjecture, for 10 points each.",
+   "parts": [
+    "The conjecture concerns these objects over number fields. These objects have an equation of the form y squared equals x cubed plus a x plus b and were used by Andrew Wiles to prove Fermat's last theorem.",
+    "The conjecture is defined in terms of a function named for Hasse and Weil designated by this letter. A function designated by this letter and named for Dirichlet is a sum over Dirichlet characters and the reciprocal of n to a particular exponent.",
+    "The BSD conjecture also makes a prediction about the first coefficient of this series for the L-function. This kind of series has coefficients containing to the nth derivative at the given point, and Colin MacLaurin names those that are centered at zero."
+   ],
+   "answers": [
+    "<b><u>elliptic</u></b> curve [or <b><u>EC</u></b>]",
+    "<b><u>L</u></b>",
+    "<b><u>Taylor</u></b> series"
+   ],
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "62df7ca243aee49db2f76a6b",
+    "name": "13",
+    "number": 13
+   },
+   "set": {
+    "_id": "62df7ca243aee49db2f7684e",
+    "name": "2014 NASAT",
+    "year": 2014,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T05:58:55.224Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Math",
+   "number": 8,
+   "answers_sanitized": [
+    "elliptic curve [or EC]",
+    "L",
+    "Taylor series"
+   ],
+   "leadin_sanitized": "Answer some questions about the Birch and Swinnerton-Dyer conjecture, for 10 points each.",
+   "parts_sanitized": [
+    "The conjecture concerns these objects over number fields. These objects have an equation of the form y squared equals x cubed plus a x plus b and were used by Andrew Wiles to prove Fermat's last theorem.",
+    "The conjecture is defined in terms of a function named for Hasse and Weil designated by this letter. A function designated by this letter and named for Dirichlet is a sum over Dirichlet characters and the reciprocal of n to a particular exponent.",
+    "The BSD conjecture also makes a prediction about the first coefficient of this series for the L-function. This kind of series has coefficients containing to the nth derivative at the given point, and Colin MacLaurin names those that are centered at zero."
+   ]
+  },
+  {
+   "_id": "6413cb8b829159c59ea871b6",
+   "leadin": "For the dihedral group D8 of the symmetries of a square acting on a square’s vertices, this subgroup for a given vertex is defined as reflections about a line of symmetry through a given vertex. For 10 points each:",
+   "parts": [
+    "Name this subgroup. For a group G acting on a set S and an element x in S, this subgroup is defined by every element little-g in G such that little-g acting on x equals x. Under those conditions, the order of G is equal to the order of the orbit of x, times the order of this subgroup of G with respect to x.",
+    "For a group G acting on itself, the stabilizer of any element in G is just this element of the group, because the action of this element on another element x gives back x. In linear algebra, this term denotes a matrix with ones down the diagonal and zeros everywhere else.",
+    "Unlike stabilizers, these objects for a group G are the group action applied to an element of G and all the elements of a subgroup H. Two kinds of these objects are equivalent for a normal subgroup H, and their order defines the index of a subgroup."
+   ],
+   "answers": [
+    "<b><u>stabilizer</u></b>",
+    "<b><u>identity</u></b>",
+    "<b><u>coset</u></b>s [accept left <b><u>coset</u></b>s or right <b><u>coset</u></b>s]"
+   ],
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "6413cb8b829159c59ea8719f",
+    "name": "10",
+    "number": 10
+   },
+   "set": {
+    "_id": "6413cb8b829159c59ea8702d",
+    "name": "2018 CMST",
+    "year": 2018,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.595Z",
+   "difficulty": 9,
+   "alternate_subcategory": "Math",
+   "number": 3,
+   "answers_sanitized": [
+    "stabilizer",
+    "identity",
+    "cosets [accept left cosets or right cosets]"
+   ],
+   "leadin_sanitized": "For the dihedral group D8 of the symmetries of a square acting on a square's vertices, this subgroup for a given vertex is defined as reflections about a line of symmetry through a given vertex. For 10 points each:",
+   "parts_sanitized": [
+    "Name this subgroup. For a group G acting on a set S and an element x in S, this subgroup is defined by every element little-g in G such that little-g acting on x equals x. Under those conditions, the order of G is equal to the order of the orbit of x, times the order of this subgroup of G with respect to x.",
+    "For a group G acting on itself, the stabilizer of any element in G is just this element of the group, because the action of this element on another element x gives back x. In linear algebra, this term denotes a matrix with ones down the diagonal and zeros everywhere else.",
+    "Unlike stabilizers, these objects for a group G are the group action applied to an element of G and all the elements of a subgroup H. Two kinds of these objects are equivalent for a normal subgroup H, and their order defines the index of a subgroup."
+   ]
+  },
+  {
+   "_id": "6451604ef8a47edd20cfa397",
+   "leadin": "One theorem in this field of mathematics, Menshikov's theorem, states that below the critical probability the open cluster containing the origin is unlikely to be large; thus the critical probabilities p-sub-T and p-sub-H are equal. For 10 points each:",
+   "parts": [
+    "Name this process which gives its name to a field of mathematics that was originally founded to model the flow of a fluid in a porous medium with randomly blocked channels.",
+    "This theorem gives the critical probability, p-sub-H for bond percolation on the square lattice. It is named after the mathematician who proved that the lower bound was greater than or equal to 1/2 and the mathetmatician who used the Russo-Seymour-Welsh result to show that the critical probability was 1/2.",
+    "Percolation theory can be said to be the study of the component structure of random subgraphs of graphs. When the random subgraph is obtained by selecting this entity, it is called bond percolation. This entity connects two adjacent vertices."
+   ],
+   "values": [
+    10,
+    10,
+    10
+   ],
+   "answers": [
+    "<b><u>percolation</u></b>",
+    "<b><u>Harris-Kesten</u></b> theorem",
+    "<b><u>edge</u></b>"
+   ],
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "6451604ef8a47edd20cfa380",
+    "name": "15",
+    "number": 15
+   },
+   "set": {
+    "_id": "6451604ef8a47edd20cfa125",
+    "name": "2011 VCU Open",
+    "year": 2011,
+    "standard": true
+   },
+   "updatedAt": "2023-05-02T19:12:07.039Z",
+   "difficulty": 10,
+   "alternate_subcategory": "Math",
+   "number": 2,
+   "answers_sanitized": [
+    "percolation",
+    "Harris-Kesten theorem",
+    "edge"
+   ],
+   "leadin_sanitized": "One theorem in this field of mathematics, Menshikov's theorem, states that below the critical probability the open cluster containing the origin is unlikely to be large; thus the critical probabilities p-sub-T and p-sub-H are equal. For 10 points each:",
+   "parts_sanitized": [
+    "Name this process which gives its name to a field of mathematics that was originally founded to model the flow of a fluid in a porous medium with randomly blocked channels.",
+    "This theorem gives the critical probability, p-sub-H for bond percolation on the square lattice. It is named after the mathematician who proved that the lower bound was greater than or equal to 1/2 and the mathetmatician who used the Russo-Seymour-Welsh result to show that the critical probability was 1/2.",
+    "Percolation theory can be said to be the study of the component structure of random subgraphs of graphs. When the random subgraph is obtained by selecting this entity, it is called bond percolation. This entity connects two adjacent vertices."
+   ]
+  },
+  {
+   "_id": "630020e3cab8fa6d1490bd52",
+   "leadin": "The probability that a randomly chosen integer between one and n has no repeated prime factors approaches the reciprocal of this number as n tends to infinity. For 10 points each:",
+   "parts": [
+    "Give this number that equals the Riemann zeta function evaluated at two.",
+    "That result follows by manipulations involving this mathematician’s namesake function, which outputs zero for numbers with repeated prime factors and plus one or minus one otherwise.",
+    "Six over pi squared is also the asymptotic probability that two randomly chosen numbers have this property, meaning their greatest common divisor is one."
+   ],
+   "answers": [
+    "<b><u>pi-squared over six</u></b> [or equivalents like <b><u>one-sixth pi-squared</u></b>; prompt on the Riemann <u>zeta</u> function <u>of two</u>]",
+    "August Ferdinand <b><u>Möbius</u></b> [accept <b><u>Möbius</u></b> function]",
+    "<b><u>coprime</u></b> [or <b><u>relatively prime</u></b>; or <b><u>mutually prime</u></b>; do not accept or prompt on “prime”]"
+   ],
+   "subcategory": "Other Science",
+   "category": "Science",
+   "packet": {
+    "_id": "630020e3cab8fa6d1490bd33",
+    "name": "11",
+    "number": 11
+   },
+   "set": {
+    "_id": "630020e3cab8fa6d1490bb84",
+    "name": "2018 NASAT",
+    "year": 2018,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.469Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Math",
+   "number": 10,
+   "answers_sanitized": [
+    "pi-squared over six [or equivalents like one-sixth pi-squared; prompt on the Riemann zeta function of two]",
+    "August Ferdinand Mobius [accept Mobius function]",
+    "coprime [or relatively prime; or mutually prime; do not accept or prompt on \"prime\"]"
+   ],
+   "leadin_sanitized": "The probability that a randomly chosen integer between one and n has no repeated prime factors approaches the reciprocal of this number as n tends to infinity. For 10 points each:",
+   "parts_sanitized": [
+    "Give this number that equals the Riemann zeta function evaluated at two.",
+    "That result follows by manipulations involving this mathematician's namesake function, which outputs zero for numbers with repeated prime factors and plus one or minus one otherwise.",
+    "Six over pi squared is also the asymptotic probability that two randomly chosen numbers have this property, meaning their greatest common divisor is one."
+   ]
+  },
+  {
+   "_id": "6446f1bb88d882e271cedb26",
+   "leadin": "Their existence was unknown until the mid 19th century. For 10 points each:",
+   "parts": [
+    "Name this type of real number which is not a root of any polynomial equation with integer coefficients, in contrast to the algebraic numbers.",
+    "The existence of transcendental numbers was first proven by this 19th century mathematician, who gave an explicit example. He also names a theorem in complex analysis saying that any bounded entire function is constant.",
+    "Liouville proved that algebraic numbers are poorly approximated by these numbers, thus giving a sufficient condition for a number to be transcendental, a result later strengthened by Roth's theorem."
+   ],
+   "values": [
+    10,
+    10,
+    10
+   ],
+   "answers": [
+    "<b><u>transcendental</u></b> numbers",
+    "Joseph <b><u>Liouville</u></b>",
+    "<b><u>rational</u></b> number"
+   ],
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "6446f1bb88d882e271cedb0c",
+    "name": "09",
+    "number": 9
+   },
+   "set": {
+    "_id": "6446f1bb88d882e271ced9bb",
+    "name": "2011 SACK",
+    "year": 2011,
+    "standard": true
+   },
+   "updatedAt": "2023-04-24T21:17:00.537Z",
+   "difficulty": 10,
+   "alternate_subcategory": "Math",
+   "number": 5,
+   "answers_sanitized": [
+    "transcendental numbers",
+    "Joseph Liouville",
+    "rational number"
+   ],
+   "leadin_sanitized": "Their existence was unknown until the mid 19th century. For 10 points each:",
+   "parts_sanitized": [
+    "Name this type of real number which is not a root of any polynomial equation with integer coefficients, in contrast to the algebraic numbers.",
+    "The existence of transcendental numbers was first proven by this 19th century mathematician, who gave an explicit example. He also names a theorem in complex analysis saying that any bounded entire function is constant.",
+    "Liouville proved that algebraic numbers are poorly approximated by these numbers, thus giving a sufficient condition for a number to be transcendental, a result later strengthened by Roth's theorem."
+   ]
+  },
+  {
+   "_id": "63ec11f1c058140717398818",
+   "leadin": "Answer some stuff about everyone’s favorite Lucas sequence, the Fibonacci sequence! For 10 points each:",
+   "parts": [
+    "A naïve recursive computation of the Fibonacci numbers might result in this kind of overflow, where the namesake structure’s pointer exceeds its bound. This last-in, first-out data structure uses push and pop operations.",
+    "Computing the Fibonacci numbers recursively can be sped up with this technique, wherein a function “remembers” the results of a past call with the same inputs, sparing some repeated computation.",
+    "If one uses Binet’s formula, a closed-form expression for approximating the nth Fibonacci number given n, then this is the runtime of finding the nth Fibonacci using that formula."
+   ],
+   "answers": [
+    "<b><u>stack</u></b> (accept <b><u>stack</u></b> overflow error)",
+    "<b><u>memoization</u></b> (accept <b><u>dynamic programming</u></b>)",
+    "O (<b><u>1</u></b>) (“big O of <b><u>one</u></b>”; accept <b><u>constant</u></b> runtime)"
+   ],
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "6302ccab3e73f93749c0e51e",
+    "name": "E3. Editors 3",
+    "number": 14
+   },
+   "set": {
+    "_id": "6302ccab3e73f93749c0e2ea",
+    "name": "2014 SUBMIT",
+    "standard": true,
+    "year": 2014
+   },
+   "updatedAt": "2023-05-20T20:17:15.208Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Computer Science",
+   "number": 2,
+   "answers_sanitized": [
+    "stack (accept stack overflow error)",
+    "memoization (accept dynamic programming)",
+    "O (1) (\"big O of one\"; accept constant runtime)"
+   ],
+   "leadin_sanitized": "Answer some stuff about everyone's favorite Lucas sequence, the Fibonacci sequence! For 10 points each:",
+   "parts_sanitized": [
+    "A naive recursive computation of the Fibonacci numbers might result in this kind of overflow, where the namesake structure's pointer exceeds its bound. This last-in, first-out data structure uses push and pop operations.",
+    "Computing the Fibonacci numbers recursively can be sped up with this technique, wherein a function \"remembers\" the results of a past call with the same inputs, sparing some repeated computation.",
+    "If one uses Binet's formula, a closed-form expression for approximating the nth Fibonacci number given n, then this is the runtime of finding the nth Fibonacci using that formula."
+   ]
+  },
+  {
+   "_id": "62f875f3a7dcfd134ec0b732",
+   "leadin": "The much-maligned GOTO statement is an instruction of this type that is unconditional. For 10 points each:",
+   "parts": [
+    "Name these instructions that cause a computer to transfer execution to a different sequence of instructions. Namesake \"predictors\" like saturating counters attempt to determine where control will be transferred by one of these instructions.",
+    "This name is given to the act of affecting the order in which instructions are executed. The jump is the most basic method of doing this task, though statements like \"if\" and \"while\" are more common in high-level languages.",
+    "To achieve non-local control flow, many languages implement these constructs, which signal that an anomalous condition has occurred. These constructs are typically \"thrown\" and \"caught.\""
+   ],
+   "answers": [
+    "<b><u>jump</u></b> [or <b><u>branch</u></b>]",
+    "<b><u>control flow</u></b> [or <b><u>flow of control</u></b>; or obvious word-form equivalents like \"<b><u>controlling</u></b> the <b><u>flow</u></b> of program execution\"]",
+    "<b><u>exception</u></b>s"
+   ],
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "62f875f3a7dcfd134ec0b709",
+    "name": "Dorman - Carleton University - LASA B",
+    "number": 4
+   },
+   "set": {
+    "_id": "62f875f3a7dcfd134ec0b688",
+    "name": "2014 ACF Regionals",
+    "year": 2014,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.414Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Computer Science",
+   "number": 19,
+   "answers_sanitized": [
+    "jump [or branch]",
+    "control flow [or flow of control; or obvious word-form equivalents like \"controlling the flow of program execution\"]",
+    "exceptions"
+   ],
+   "leadin_sanitized": "The much-maligned GOTO statement is an instruction of this type that is unconditional. For 10 points each:",
+   "parts_sanitized": [
+    "Name these instructions that cause a computer to transfer execution to a different sequence of instructions. Namesake \"predictors\" like saturating counters attempt to determine where control will be transferred by one of these instructions.",
+    "This name is given to the act of affecting the order in which instructions are executed. The jump is the most basic method of doing this task, though statements like \"if\" and \"while\" are more common in high-level languages.",
+    "To achieve non-local control flow, many languages implement these constructs, which signal that an anomalous condition has occurred. These constructs are typically \"thrown\" and \"caught.\""
+   ]
+  },
+  {
+   "_id": "63acb2f4ea571b63636ee7cc",
+   "leadin": "If you’re building an app that pulls dynamically updating data from a site like Facebook or Flickr, you might use an open kind of these tools. For 10 points each:",
+   "parts": [
+    "Name this set of protocols that applications use to communicate with each other.",
+    "APIs on the web are often used to send requests using this protocol, the basis for data communication on the web. Its name is usually seen before the colon-slash-slash in URLs.",
+    "Oracle sued Google in part for infringing on the structure, sequence, and organization of the API for this object-oriented language with a “write once, run anywhere” design."
+   ],
+   "answers": [
+    "<b><u>a</u></b>pplication <b><u>p</u></b>rogramming <b><u>i</u></b>nterface [or <b><u>API</u></b>]",
+    "<b><u>H</u></b>yper<b><u>t</u></b>ext <b><u>T</u></b>ransfer <b><u>P</u></b>rotocol [or <b><u>HTTP</u></b>]",
+    "<b><u>Java</u></b>"
+   ],
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "63acb2f4ea571b63636ee7b2",
+    "name": "10",
+    "number": 10
+   },
+   "set": {
+    "_id": "63acb2f4ea571b63636ee5f8",
+    "name": "2015 Missouri Open",
+    "year": 2015,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.493Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Computer Science",
+   "number": 2,
+   "answers_sanitized": [
+    "application programming interface [or API]",
+    "Hypertext Transfer Protocol [or HTTP]",
+    "Java"
+   ],
+   "leadin_sanitized": "If you're building an app that pulls dynamically updating data from a site like Facebook or Flickr, you might use an open kind of these tools. For 10 points each:",
+   "parts_sanitized": [
+    "Name this set of protocols that applications use to communicate with each other.",
+    "APIs on the web are often used to send requests using this protocol, the basis for data communication on the web. Its name is usually seen before the colon-slash-slash in URLs.",
+    "Oracle sued Google in part for infringing on the structure, sequence, and organization of the API for this object-oriented language with a \"write once, run anywhere\" design."
+   ]
+  },
+  {
+   "_id": "62df8012e66cc66ca571d248",
+   "leadin": "Planar ones can be drawn with no intersections. For 10 points each:",
+   "parts": [
+    "Name these sets of nodes and their edges.",
+    "These are simple undirected graphs in which each node is directly connected by an edge to every other node.",
+    "This theorem states that for numbers k and l, there exists a sufficiently large number A such that every graph with A nodes contains either a complete subgraph of at least size k or an independent set of at least size l."
+   ],
+   "answers": [
+    "<b><u>graph</u></b>s",
+    "<b><u>complete</u></b> graph",
+    "<b><u>Ramsey</u></b>'s Theorem"
+   ],
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "62df8012e66cc66ca571d22f",
+    "name": "15",
+    "number": 15
+   },
+   "set": {
+    "_id": "62df8012e66cc66ca571cfb8",
+    "name": "2011 NASAT",
+    "year": 2011,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T05:58:55.245Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Math",
+   "number": 2,
+   "answers_sanitized": [
+    "graphs",
+    "complete graph",
+    "Ramsey's Theorem"
+   ],
+   "leadin_sanitized": "Planar ones can be drawn with no intersections. For 10 points each:",
+   "parts_sanitized": [
+    "Name these sets of nodes and their edges.",
+    "These are simple undirected graphs in which each node is directly connected by an edge to every other node.",
+    "This theorem states that for numbers k and l, there exists a sufficiently large number A such that every graph with A nodes contains either a complete subgraph of at least size k or an independent set of at least size l."
+   ]
+  },
+  {
+   "_id": "63d89b901b9f4c4f11ae1b74",
+   "leadin": "\"Dangling\" types of these objects occur when the data they reference is destroyed during garbage collection. For 10 point each:",
+   "parts": [
+    "Name these objects, which are defined in C using an asterisk. They store the value of a variable's address, and they can be de-referenced to find the variable's actual value.",
+    "Attempting to dereference \"dangling\" pointers can cause this error, in which the program attempts to access memory that is read-only or recently-freed. It coincides with a \"core dump.\"",
+    "This class of garbage collection algorithms ensures that \"dangling\" pointers do not exist by first looking for memory unreachable from the program and then freeing it. It is prone to fragmenting memory."
+   ],
+   "answers": [
+    "<b><u>pointer</u></b>s",
+    "<b><u>segmentation fault</u></b> [accept <b><u>segfault</u></b>]",
+    "<b><u>mark and sweep</u></b>"
+   ],
+   "subcategory": "Other Science",
+   "category": "Science",
+   "packet": {
+    "_id": "63d89b901b9f4c4f11ae1b55",
+    "name": "13",
+    "number": 13
+   },
+   "set": {
+    "_id": "62f32c8153c44a298923c121",
+    "name": "2021 HARI",
+    "year": 2021,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.380Z",
+   "difficulty": 7,
+   "alternate_subcategory": "Computer Science",
+   "number": 11,
+   "answers_sanitized": [
+    "pointers",
+    "segmentation fault [accept segfault]",
+    "mark and sweep"
+   ],
+   "leadin_sanitized": "\"Dangling\" types of these objects occur when the data they reference is destroyed during garbage collection. For 10 point each:",
+   "parts_sanitized": [
+    "Name these objects, which are defined in C using an asterisk. They store the value of a variable's address, and they can be de-referenced to find the variable's actual value.",
+    "Attempting to dereference \"dangling\" pointers can cause this error, in which the program attempts to access memory that is read-only or recently-freed. It coincides with a \"core dump.\"",
+    "This class of garbage collection algorithms ensures that \"dangling\" pointers do not exist by first looking for memory unreachable from the program and then freeing it. It is prone to fragmenting memory."
+   ]
+  },
+  {
+   "_id": "673ec01090236da031c2d0aa",
+   "leadin": "The best-known algorithm for this task gains its efficiency from only considering seven sub-problems, rather than the eight sub-problems necessary in a naïve approach. For 10 points each:",
+   "leadin_sanitized": "The best-known algorithm for this task gains its efficiency from only considering seven sub-problems, rather than the eight sub-problems necessary in a naive approach. For 10 points each:",
+   "parts": [
+    "Name this task that can be solved in sub-cubic runtime using Strassen’s algorithm. GPUs are particularly efficient at performing this mathematical task due to their parallel nature.",
+    "Strassen developed a probabilistic algorithm for this other problem. The poly-time AKS algorithm was introduced in a paper simply titled “[this problem] is in P.”",
+    "A computational problem is in the complexity class P if it can be solved in polynomial time on a deterministic version of this British computer scientist’s namesake “machines.”"
+   ],
+   "parts_sanitized": [
+    "Name this task that can be solved in sub-cubic runtime using Strassen's algorithm. GPUs are particularly efficient at performing this mathematical task due to their parallel nature.",
+    "Strassen developed a probabilistic algorithm for this other problem. The poly-time AKS algorithm was introduced in a paper simply titled \"[this problem] is in P.\"",
+    "A computational problem is in the complexity class P if it can be solved in polynomial time on a deterministic version of this British computer scientist's namesake \"machines.\""
+   ],
+   "answers": [
+    "<b><u>matrix multiplication</u></b> [or equivalents such as <b><u>multiplying</u></b> two <b><u>matrices</u></b>; prompt on <u>multiplication</u>; reject answers that refer to “multiplication of numbers” or “multiplication of integers”]",
+    "<b><u>primality</u></b> testing [or word forms; or descriptions of checking if a number is <b><u>prime</u></b> or not or descriptions of checking if a number is <b><u>composite</u></b> or not; accept <b><u>PRIME</u></b>S or “<b><u>PRIME</u></b>S is in P” or Solovay–Strassen <b><u>primality</u> </b>test or AKS <b><u>primality</u></b> test; reject “prime factorization”]",
+    "Alan <b><u>Turing</u></b> [accept <b><u>Turing</u></b> machines]"
+   ],
+   "answers_sanitized": [
+    "matrix multiplication [or equivalents such as multiplying two matrices; prompt on multiplication; reject answers that refer to \"multiplication of numbers\" or \"multiplication of integers\"]",
+    "primality testing [or word forms; or descriptions of checking if a number is prime or not or descriptions of checking if a number is composite or not; accept PRIMES or \"PRIMES is in P\" or Solovay-Strassen primality test or AKS primality test; reject \"prime factorization\"]",
+    "Alan Turing [accept Turing machines]"
+   ],
+   "updatedAt": "2024-11-21T05:07:28.913Z",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "alternate_subcategory": "Computer Science",
+   "values": [
+    10,
+    10,
+    10
+   ],
+   "difficultyModifiers": [
+    "m",
+    "h",
+    "e"
+   ],
+   "number": 13,
+   "difficulty": 7,
+   "packet": {
+    "_id": "673ec01090236da031c2d089",
+    "name": "L - Florida A, Simon Fraser A, Toronto D, Waterloo A",
+    "number": 12
+   },
+   "set": {
+    "_id": "673ec00f90236da031c2cec5",
+    "name": "2024 ACF Winter",
+    "year": 2024,
+    "standard": true
+   }
+  },
+  {
+   "_id": "69ebd8164997b657510975ff",
+   "leadin": "A polymorphic system named for Hindley and Milner is used to “infer” this property automatically. For 10 points each:",
+   "leadin_sanitized": "A polymorphic system named for Hindley and Milner is used to \"infer\" this property automatically. For 10 points each:",
+   "parts": [
+    "Name this property that is assigned statically in C and dynamically in Python.",
+    "Hindley–Milner type inference is notably used by this language that pioneered type classes for overloading. Like Brooks and Curry, this language is named for the namesake of currying.",
+    "Type inference is common in a programming paradigm named for these entities that includes Haskell. These callable blocks of code take parameters and return output."
+   ],
+   "parts_sanitized": [
+    "Name this property that is assigned statically in C and dynamically in Python.",
+    "Hindley-Milner type inference is notably used by this language that pioneered type classes for overloading. Like Brooks and Curry, this language is named for the namesake of currying.",
+    "Type inference is common in a programming paradigm named for these entities that includes Haskell. These callable blocks of code take parameters and return output."
+   ],
+   "answers": [
+    "<b><u>type</u></b> [or <b><u>typing</u></b>; or <b><u>type</u></b> inference]",
+    "<b><u>Haskell</u> </b>",
+    "<b><u>function</u></b>s [or <b><u>function</u></b>al programming]"
+   ],
+   "answers_sanitized": [
+    "type [or typing; or type inference]",
+    "Haskell",
+    "functions [or functional programming]"
+   ],
+   "updatedAt": "2026-04-24T20:52:38.557Z",
+   "category": "Science",
+   "subcategory": "Other Science",
+   "alternate_subcategory": "Computer Science",
+   "values": [
+    10,
+    10,
+    10
+   ],
+   "number": 10,
+   "difficulty": 8,
+   "packet": {
+    "_id": "69ebd8164997b657510975df",
+    "name": "03",
+    "number": 3
+   },
+   "set": {
+    "_id": "69ebd8154997b65751097586",
+    "name": "2025 NASAT",
+    "year": 2025,
+    "standard": true
+   }
+  },
+  {
+   "_id": "630020e3cab8fa6d1490c131",
+   "leadin": "Identify the following about computable numbers, for 10 points each.",
+   "parts": [
+    "Every computable number can be output by one of these idealized computers, whose termination was the subject of the halting problem.",
+    "Because each computable number corresponds to a process run on a Turing machine, the set of computable numbers has this property of being in a one-to-one correspondence with the natural numbers. As a result, not all real numbers are computable, since the set of real numbers, unlike the rational numbers, does not have this property.",
+    "Specker (SHPEK-uh) sequences demonstrate that the set of computable numbers lacks this property of the real numbers. This property guarantees that any non-empty set of real numbers that is bounded from above has a supremum (soo-PREE-mum)."
+   ],
+   "answers": [
+    "<b><u>Turing machine</u></b>s",
+    "<b><u>countable</u></b> [or <b><u>countability</u></b>; or <b><u>countably infinite</u></b>]",
+    "<b><u>complete</u></b>ness [or the <b><u>least upper bound</u></b> property]"
+   ],
+   "category": "Science",
+   "subcategory": "Other Science",
+   "packet": {
+    "_id": "630020e3cab8fa6d1490c119",
+    "name": "14",
+    "number": 14
+   },
+   "set": {
+    "_id": "630020e3cab8fa6d1490bee9",
+    "name": "2017 NASAT",
+    "year": 2017,
+    "standard": true
+   },
+   "updatedAt": "2023-04-09T06:00:05.463Z",
+   "difficulty": 8,
+   "alternate_subcategory": "Math",
+   "number": 3,
+   "answers_sanitized": [
+    "Turing machines",
+    "countable [or countability; or countably infinite]",
+    "completeness [or the least upper bound property]"
+   ],
+   "leadin_sanitized": "Identify the following about computable numbers, for 10 points each.",
+   "parts_sanitized": [
+    "Every computable number can be output by one of these idealized computers, whose termination was the subject of the halting problem.",
+    "Because each computable number corresponds to a process run on a Turing machine, the set of computable numbers has this property of being in a one-to-one correspondence with the natural numbers. As a result, not all real numbers are computable, since the set of real numbers, unlike the rational numbers, does not have this property.",
+    "Specker (SHPEK-uh) sequences demonstrate that the set of computable numbers lacks this property of the real numbers. This property guarantees that any non-empty set of real numbers that is bounded from above has a supremum (soo-PREE-mum)."
+   ]
+  }
+ ]
+}

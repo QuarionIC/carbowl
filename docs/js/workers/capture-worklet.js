@@ -14,8 +14,11 @@ const PHASES = 64;  // sub-sample positions kept in the filter table
 const SILENCE = new Float32Array(128);
 
 class CaptureProcessor extends AudioWorkletProcessor {
-  constructor () {
+  constructor (options) {
     super();
+    // The page keeps one clock across audio contexts; this context's share of it starts at `offset`.
+    this.offset = (options && options.processorOptions && Number(options.processorOptions.offset)) || 0;
+    this.frames = 0; this.beatAcc = 0; this.beatN = 0; this.sawInput = false;
     this.ratio = sampleRate / TARGET;            // input samples per output sample
     const cutoff = Math.min(1, TARGET / sampleRate) * 0.92;
     this.reach = Math.ceil(HALF / cutoff);       // input samples used either side of a centre
@@ -41,17 +44,24 @@ class CaptureProcessor extends AudioWorkletProcessor {
     this.outN = 0;
     this.sink = null;
     this.gain = 1;
+    this.stopped = false;
     this.port.onmessage = e => {
       if (e.data && e.data.port) this.sink = e.data.port;
       if (e.data && typeof e.data.gain === 'number') this.gain = e.data.gain;
+      // A replaced microphone path must fall silent at once: left running, it would keep sending
+      // frames beside the new one and the listener would hear everything twice.
+      if (e.data && e.data.stop) { this.stopped = true; this.sink = null; }
     };
   }
 
   process (inputs) {
+    if (this.stopped) return false;
     const input = inputs[0];
     // With nothing connected (or a muted track) the browser passes no channels: treat that as
     // silence so that time keeps moving for the listener and end-of-speech is still detected.
-    const ch0 = input && input.length && input[0] ? input[0] : SILENCE;
+    const present = !!(input && input.length && input[0]);
+    if (present) this.sawInput = true;
+    const ch0 = present ? input[0] : SILENCE;
     const ch1 = input && input.length > 1 ? input[1] : null;
     const n = ch0.length; const size = this.size; const hist = this.hist; const mask = size - 1;
     for (let i = 0; i < n; i++) hist[(this.inCount + i) & mask] = ch1 ? 0.5 * (ch0[i] + ch1[i]) : ch0[i];
@@ -64,13 +74,23 @@ class CaptureProcessor extends AudioWorkletProcessor {
       const base = phase * taps; const first = i0 - reach;
       let acc = 0;
       for (let k = 0; k < taps; k++) acc += hist[(first + k) & mask] * table[base + k];
-      this.out[this.outN++] = this.gain * acc;
+      const v = this.gain * acc;
+      this.out[this.outN++] = v;
+      this.beatAcc += v * v; this.beatN++;
       this.nextOut += this.ratio;
       if (this.outN === FRAME) {
         const frame = this.out; this.out = new Float32Array(FRAME); this.outN = 0;
         // Time of the newest input sample, minus the stretch of input not yet turned into output.
-        const t = currentTime + n / sampleRate - (this.inCount - this.nextOut) / sampleRate;
+        const t = this.offset + currentTime + n / sampleRate - (this.inCount - this.nextOut) / sampleRate;
         (this.sink || this.port).postMessage({ samples: frame, t }, [frame.buffer]);
+        this.frames++;
+        // Twice a second the page is told that frames are flowing (they go straight to the listening
+        // worker, so the page would otherwise never know), how loud they are, and whether the
+        // microphone is really supplying them.
+        if (this.frames % 12 === 0) {
+          this.port.postMessage({ beat: true, frames: this.frames, rms: Math.sqrt(this.beatAcc / Math.max(1, this.beatN)), input: this.sawInput });
+          this.beatAcc = 0; this.beatN = 0; this.sawInput = false;
+        }
       }
     }
     return true;

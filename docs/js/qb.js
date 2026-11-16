@@ -22,6 +22,47 @@ export const CATEGORY_TREE = [
 export const ALL_SUBCATEGORIES = CATEGORY_TREE.flatMap(c => c.subs);
 export const ALL_ALTERNATES = CATEGORY_TREE.flatMap(c => c.alts);
 
+// Which subcategories carry an alternate-subcategory tag ("Other Science" questions are tagged
+// Math, Astronomy, Computer Science, ...; Biology questions are not tagged at all).
+const ALT_HOME = { Literature: null, Science: ['Other Science'], 'Fine Arts': ['Other Fine Arts'], 'Social Science': ['Social Science'] };
+const altHome = cat => ALT_HOME[cat.name] === null ? cat.subs : (ALT_HOME[cat.name] || []);
+
+/**
+ * Topics offered as one-tap switches on the main screen. Math and Computer Science are not
+ * QBReader categories of their own: they are alternate subcategories of Science > Other Science.
+ */
+export const QUICK_TOPICS = [
+  { key: 'philosophy', label: 'Philosophy', cat: 'Philosophy', sub: 'Philosophy' },
+  { key: 'math', label: 'Math', cat: 'Science', sub: 'Other Science', alt: 'Math' },
+  { key: 'cs', label: 'Computer Science', cat: 'Science', sub: 'Other Science', alt: 'Computer Science' }
+];
+
+export function topicOn (filters, topic) {
+  return filters.subs.includes(topic.sub) && (!topic.alt || filters.alts.includes(topic.alt));
+}
+
+/** Switches a quick topic on or off; returns new filters and leaves the ones passed in alone. */
+export function setTopic (filters, topic, on) {
+  const f = { ...filters, subs: filters.subs.slice(), alts: filters.alts.slice() };
+  const cat = CATEGORY_TREE.find(c => c.name === topic.cat);
+  if (!topic.alt) {
+    f.subs = on ? [...new Set([...f.subs, topic.sub])] : f.subs.filter(s => s !== topic.sub);
+    return f;
+  }
+  const others = f.alts.filter(a => !cat.alts.includes(a));
+  let mine = f.alts.filter(a => cat.alts.includes(a));
+  if (on) {
+    // Switching Math on must not also bring in astronomy and earth science.
+    if (!f.subs.includes(topic.sub)) { f.subs.push(topic.sub); mine = [topic.alt]; } else mine = [...new Set([...mine, topic.alt])];
+  } else {
+    mine = mine.filter(a => a !== topic.alt);
+    // Nothing left under this subcategory: drop it, and reset the narrowing for the next time it is ticked.
+    if (!mine.length) { f.subs = f.subs.filter(s => s !== topic.sub); mine = cat.alts.slice(); }
+  }
+  f.alts = [...others, ...mine];
+  return f;
+}
+
 export const DIFFICULTIES = [
   { value: 0, label: 'Pop Culture', short: 'Pop' },
   { value: 1, label: 'Middle School', short: 'MS' },
@@ -93,16 +134,30 @@ export function buildParams (filters, number, extra = {}) {
   return p;
 }
 
-/** Mirrors CategoryManager.isValidCategory in qbreader/website. */
-export function isValidQuestion (q, filters) {
+/**
+ * Mirrors CategoryManager.isValidCategory in qbreader/website, with one addition: when a category's
+ * alternates have been narrowed (say, only Math), an "Other Science" question that carries no
+ * alternate tag at all is turned away too, unless `allowUntagged` is set. QBReader lets those through.
+ */
+export function isValidQuestion (q, filters, { allowUntagged = false } = {}) {
   if (!q || typeof q !== 'object') return false;
   const cats = activeCategories(filters);
   const cat = cats.find(c => c.name === q.category);
   if (!cat) return false;
   if (cat.subs.length > 1 && !filters.subs.includes(q.subcategory)) return false;
   if (q.alternate_subcategory && !filters.alts.includes(q.alternate_subcategory)) return false;
+  if (!q.alternate_subcategory && !allowUntagged && isUntaggedInNarrowed(q, filters)) return false;
   if (filters.difficulties.length && !filters.difficulties.includes(q.difficulty)) return false;
   return true;
+}
+
+/** True for a question with no alternate tag in a subcategory whose alternates the listener has narrowed. */
+export function isUntaggedInNarrowed (q, filters) {
+  if (!q || q.alternate_subcategory) return false;
+  const cat = CATEGORY_TREE.find(c => c.name === q.category);
+  if (!cat || !cat.alts.length || !altHome(cat).includes(q.subcategory)) return false;
+  const chosen = cat.alts.filter(a => filters.alts.includes(a)).length;
+  return chosen > 0 && chosen < cat.alts.length;
 }
 
 export function filterSignature (filters) {
@@ -164,6 +219,7 @@ export class QuestionFeed {
     if (sig === this.sig && !this._savedBuffers) return;
     this.sig = sig;
     this.buffers = { tossup: [], bonus: [] };
+    this.allowUntagged = false; this._untaggedRounds = 0;
     this.gen = (this.gen || 0) + 1; // invalidates in-flight fetches made for older filters
     this.inflight = { tossup: null, bonus: null };
     if (this._savedBuffers && this._savedSig === sig) {
@@ -200,14 +256,26 @@ export class QuestionFeed {
     if (gen !== this.gen) return 0; // filters changed while the request was in flight
     const usable = type === 'tossup' ? isUsableTossup : isUsableBonus;
     const have = new Set(this.buffers[type].map(q => q._id));
-    let added = 0; let repeats = 0;
+    let added = 0; let repeats = 0; let untagged = 0;
+    const valid = q => isValidQuestion(q, this.filters, { allowUntagged: this.allowUntagged });
     for (const q of list) {
-      if (!usable(q) || !isValidQuestion(q, this.filters) || have.has(q._id)) continue;
+      if (!usable(q) || have.has(q._id)) continue;
+      if (!valid(q)) { if (isUntaggedInNarrowed(q, this.filters)) untagged++; continue; }
       if (this.seen.has(q._id)) { repeats++; continue; }
       have.add(q._id);
       this.buffers[type].push({ ...q, type });
       added++;
     }
+    // A narrowed topic (only Math, say) whose questions mostly carry no tag would starve the quiz:
+    // after two rounds with nothing but untagged questions, take those as well.
+    if (added === 0 && untagged > 0 && !this.allowUntagged) {
+      this._untaggedRounds = (this._untaggedRounds || 0) + 1;
+      if (this._untaggedRounds >= 2) {
+        this.allowUntagged = true;
+        this.log('feed: tagged questions ran short, also taking untagged ones', { type });
+        for (const q of list) { if (usable(q) && valid(q) && !have.has(q._id) && !this.seen.has(q._id)) { have.add(q._id); this.buffers[type].push({ ...q, type }); added++; } }
+      }
+    } else if (added > 0) this._untaggedRounds = 0;
     // Everything valid was already heard: the pool is exhausted, so start over rather than stall.
     if (added === 0 && repeats > 0) {
       this._exhausted = (this._exhausted || 0) + 1;
@@ -215,7 +283,7 @@ export class QuestionFeed {
         this.log('feed: pool exhausted, allowing repeats', { type });
         this.seen.clear(); this._exhausted = 0;
         for (const q of list) {
-          if (usable(q) && isValidQuestion(q, this.filters) && !have.has(q._id)) { have.add(q._id); this.buffers[type].push({ ...q, type }); added++; }
+          if (usable(q) && valid(q) && !have.has(q._id)) { have.add(q._id); this.buffers[type].push({ ...q, type }); added++; }
         }
       }
     } else if (added > 0) this._exhausted = 0;

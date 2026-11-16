@@ -4,23 +4,37 @@ Hands-free quizbowl practice for the car. Carbowl pulls tossups and bonuses from
 [QBReader](https://www.qbreader.org), reads them aloud, and listens:
 
 - **Tossups**: say **"buzz"** while the question is being read (or within a few seconds after), wait
-  for the beep, then say your answer.
+  for the beep, then say your answer. The reader stops the moment it hears a voice and carries on
+  if it was nothing. Two falling notes mean "say that again?". **"Never mind"** takes a buzz back.
 - **Bonuses**: just say the answer during or after each part.
-- Any time: **"skip question"**, **"repeat question"**, **"pause quiz"**, **"resume"**.
+- Any time: **"repeat the question"**, **"what were the earlier clues"**, **"go back"** (the last
+  sentence), **"skip question"**, **"pause quiz"**, **"resume"**, **"read faster / slower"**,
+  **"volume up / down"**.
+- Things it can tell you: **"what was the answer"**, **"spell that"**, **"what's my score"**,
+  **"what set is this from"**, **"what can I say"**. The answer to a question still in play is
+  never given.
 - Right after a verdict: **"I was right"** or **"I was wrong"** overrules the judge.
 - The big button on screen always works as a buzzer.
 
 Everything except fetching questions runs on the device: the voice, the speech recognition and the
 answer judging. After the one-time model download the quiz keeps going through patches with no
-signal as long as questions are buffered.
+signal as long as questions are buffered. Every question asked is kept on the device (IndexedDB)
+for review across sessions, with what was said and the verdict.
 
 ## Using it
 
 Open the site in Safari (iPhone) or Chrome, download the speech models once on Wi-Fi (about 240 MB),
-then tap **Start**. Keep the screen on. Settings has every QBReader category, subcategory and
-alternate subcategory, all eleven difficulty levels (default: medium college and harder,
-philosophy), reading speed and voice, timings, and a sound check that shows whether the microphone
-is picking up the reader's own voice.
+then tap **Start**. The start screen has one-tap topic switches (Philosophy, Math, Computer
+Science); Settings has every QBReader category, subcategory and alternate subcategory, all eleven
+difficulty levels (default: medium college and harder, philosophy), reading speed and voice, and
+timings.
+
+**In the car.** With CarPlay or Bluetooth the car shows Carbowl as a phone call: that is how a web
+page gets the car's microphone. The car's call volume is separate from its music volume (Settings >
+Car > Play test tone, and turn the knob while it sounds). Run it in a **Safari tab**, not as a Home
+Screen app: in a tab it keeps going with the phone locked or another app in front; a Home Screen
+app loses the microphone in the background. Settings > Car > **Run the car check** is a two-minute
+guided test that reports what the phone and the car actually did.
 
 ## How it works
 
@@ -34,12 +48,21 @@ is picking up the reader's own voice.
 | `docs/js/narrator.js` | Schedules sentences, tracks the character being spoken (for buzz position and power) |
 | `docs/js/intent.js` | Decides whether an utterance is a buzz, a command, the reader's echo, or an answer |
 | `docs/js/judge.js` | Answer judging: QBReader's own checker plus a sound-alike comparison for names heard "by ear" |
-| `docs/js/game.js` | The quiz itself: tossup and bonus flow, prompts, scoring, pause/skip/override |
-| `docs/js/app.js` | Screen, settings, model download, diagnostics |
+| `docs/js/game.js` | The quiz itself: tossup and bonus flow, prompts, scoring, pause/skip/override, spoken requests |
+| `docs/js/audio.js` | One audio context for playing and capturing; keeps itself running across route changes |
+| `docs/js/history.js` | Everything asked, kept across sessions |
+| `docs/js/numbers.js` | Spoken numbers ("twenty four") against written ones ("24") when judging |
+| `docs/js/clock.js` | Timers that keep time while the page is in the background |
+| `docs/js/app.js` | Screen, settings, model download, review, the car check |
 
-The app's own speech goes out through Web Audio rather than the system voice, which is what lets
-the browser's echo canceller keep it out of the microphone, so a spoken buzz can be heard while a
-question is being read.
+The app's own speech is synthesised in the page rather than by the system voice. It leaves through
+a MediaStream played by an `<audio>` element, with nothing connected to the audio context's own
+destination. On iOS that is what makes it audible beside an open microphone (plain Web Audio output
+is turned down while capturing: WebKit bugs 218012, 236219), what gives the echo canceller its
+reference, so that a spoken buzz can be heard while a question is being read, and what lets the
+context keep running in the background (WebKit bug 237878). The audio engine never waits on
+`resume()` (it may not settle while interrupted); a once-a-second watchdog nudges, re-opens or
+rebuilds whatever has stopped.
 
 ## Developing
 

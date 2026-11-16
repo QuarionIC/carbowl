@@ -1,7 +1,7 @@
 // Screen and wiring: settings, model download, starting the engines, and showing what the game does.
 
-import { CATEGORY_TREE, DIFFICULTIES, ALL_ALTERNATES, defaultFilters, sanitizeFilters, QuestionFeed, MIN_YEAR, MAX_YEAR, activeCategories } from './qb.js';
-import { safeAnswerHtml, escapeHtml, wordsOf } from './speechtext.js';
+import { CATEGORY_TREE, DIFFICULTIES, ALL_ALTERNATES, defaultFilters, sanitizeFilters, QuestionFeed, MIN_YEAR, MAX_YEAR, activeCategories, QUICK_TOPICS, topicOn, setTopic } from './qb.js';
+import { safeAnswerHtml, splitAnswerHtml, escapeHtml, wordsOf, chunkForSpeech } from './speechtext.js';
 import { judgeAnswer } from './judge.js';
 import { soundSimilarity } from './phonetics.js';
 import checkAnswer from '../vendor/qb-answer-checker.js';
@@ -9,8 +9,11 @@ import { AudioEngine } from './audio.js';
 import { Narrator } from './narrator.js';
 import { Game, PHRASES, DEFAULT_RULES } from './game.js';
 import { TtsClient, ListenClient, loadManifest, requiredFiles, cacheStatus, downloadModels, clearModelCache, VOICES, RECOGNIZERS } from './speech.js';
+import { HistoryStore, expandRecord, groupSessions, resumableSession, scoreOf, missedLines, byCategory } from './history.js';
+import { classifyBuzz, isEcho } from './intent.js';
+import { sleep, setTimer, usingWorkerClock } from './clock.js';
 
-const VERSION = '0.1.0';
+const VERSION = '0.2.0';
 // ?test in the address swaps the microphone for a scripted one, so the whole loop can be exercised without sound hardware.
 const TEST = new URLSearchParams(location.search).has('test');
 const BASE = new URL('.', document.baseURI).href;
@@ -29,20 +32,26 @@ const LS = {
 const SPEED = { min: 0.8, max: 2, step: 0.05, nudge: 0.1, earlier: [1.1, 1.65], standard: 1.3, calm: 1.35 };
 const clampSpeed = v => Math.min(SPEED.max, Math.max(SPEED.min, Math.round((Number(v) || SPEED.standard) / SPEED.step) * SPEED.step));
 const DEFAULTS = {
-  settingsVersion: 3,
+  settingsVersion: 4,
   filters: defaultFilters(),
   rules: { ...DEFAULT_RULES },
   voice: 'supertonic', sid: 5, speed: SPEED.standard, calmAnswers: true, steps: 5, volume: 1,
   asr: 'moonshine-base', vadThreshold: 0.5, leniency: 0.8,
   echoCancellation: true, noiseSuppression: true, autoGainControl: true, micId: '',
+  // How sound leaves the page: 'element' is the one that is heard beside an open microphone on an
+  // iPhone (in a car especially) and keeps going with the phone locked; 'direct' is the older way.
+  output: 'element',
   showText: true
 };
 function loadSettings () {
   const s = LS.get('settings', {}) || {};
   const out = { ...DEFAULTS, ...s, rules: { ...DEFAULTS.rules, ...(s.rules || {}) }, filters: sanitizeFilters(s.filters) };
-  // Settings saved by an earlier version carry that version's default speed; move those to the
-  // current default once. A speed the listener chose for themselves is left alone.
-  if ((s.settingsVersion || 1) < DEFAULTS.settingsVersion && (s.speed === undefined || SPEED.earlier.some(v => Math.abs(s.speed - v) < 0.001))) out.speed = SPEED.standard;
+  // Settings saved by an earlier version carry that version's defaults; move those to the current
+  // ones once. Anything the listener chose for themselves is left alone.
+  const from = s.settingsVersion || 1;
+  if (from < 3 && (s.speed === undefined || SPEED.earlier.some(v => Math.abs(s.speed - v) < 0.001))) out.speed = SPEED.standard;
+  if (from < 4 && s.rules && Math.abs((s.rules.sentenceGapSec || 0) - 0.12) < 0.001) out.rules.sentenceGapSec = DEFAULT_RULES.sentenceGapSec;
+  if (out.output !== 'element' && out.output !== 'direct') out.output = 'element';
   out.settingsVersion = DEFAULTS.settingsVersion;
   out.speed = +clampSpeed(out.speed).toFixed(2);
   if (!VOICES[out.voice]) out.voice = DEFAULTS.voice;
@@ -70,23 +79,28 @@ function toast (msg, ms = 2600) { const t = $('toast'); t.textContent = msg; t.c
 const mb = bytes => (bytes / 1048576).toFixed(bytes < 10485760 ? 1 : 0) + ' MB';
 
 // ---------- engines ----------
-const audio = new AudioEngine({ log });
+const audio = new AudioEngine({ log, output: settings.output });
 const feed = new QuestionFeed({ store: LS, log: (m, d) => log(m + (d ? ' ' + JSON.stringify(d) : '')) });
 feed.setFilters(settings.filters);
+const historyStore = new HistoryStore({ log });
 let manifest = null; let tts = null; let listener = null; let narrator = null; let game = null;
 let phase = 'boot';            // boot | setup | downloading | loading | ready | running | error
 let enginesFor = '';           // "voice|asr" the running workers were built for
 let wakeLock = null; let autoPaused = false; let lastRec = null;
+let sessionId = 0;             // when this session began (it is also the key its questions are filed under)
 const view = { rec: null, part: -1, offset: 0, buzzed: false };
+// Opened from the Home Screen as an app of its own, iOS stops the microphone as soon as the phone
+// is locked or another app is in front; in a Safari tab it keeps going.
+const STANDALONE = (typeof navigator !== 'undefined' && navigator.standalone === true) || (typeof matchMedia === 'function' && matchMedia('(display-mode: standalone)').matches);
 
 function setPhase (p) { phase = p; app.dataset.phase = p === 'downloading' ? 'setup' : p; renderMain(); }
 const voiceParams = () => ({ sid: settings.sid, speed: settings.speed, steps: settings.steps });
 const judge = (answerline, transcripts, previous) => judgeAnswer({ answerline, transcripts, previous, checkAnswer, threshold: settings.leniency });
 
 async function boot () {
-  log(`Carbowl ${VERSION}; ${navigator.userAgent}`);
-  restoreHistory();
-  buildSettings(); renderScore(); renderMain(); renderSpeed();
+  log(`Carbowl ${VERSION}; ${navigator.userAgent}${STANDALONE ? '; opened as a Home Screen app' : ''}`);
+  await restoreHistory();
+  buildSettings(); renderScore(); renderMain(); renderSpeed(); renderTopics();
   if ('serviceWorker' in navigator && !TEST) navigator.serviceWorker.register('sw.js').catch(e => log('offline support not installed: ' + e.message));
   try { manifest = await loadManifest(BASE); } catch (e) { return fail('Could not load the app files. Check the connection and reload.', e); }
   // Only offer voices and recognisers that this copy of the site actually ships.
@@ -205,7 +219,7 @@ async function soundsRight (text, clip) {
 /** Stand-in microphone for self-tests: streams silence in real time and mixes in queued speech. */
 class FakeMic {
   constructor () { this.queue = []; this.sent = 0; this.t0 = 0; this.timer = null; }
-  start () { if (this.timer) return; this.t0 = audio.time; this.sent = 0; this.timer = setInterval(() => this.tick(), 20); }
+  start () { if (this.timer) return; listener.detachPorts(); this.t0 = audio.time; this.sent = 0; this.timer = setInterval(() => this.tick(), 20); }
   stop () { clearInterval(this.timer); this.timer = null; }
   say (samples16k) { this.queue.push({ s: samples16k, at: 0 }); }
   tick () {
@@ -238,38 +252,81 @@ async function speakAsUser (text, { sid = 2, speed = 1, level = 0.5 } = {}) {
 }
 
 // ---------- start / stop ----------
-async function start () {
-  if (phase !== 'ready') return;
-  $('status').textContent = 'Starting…';
-  let micOk = true;
-  const constraints = { echoCancellation: settings.echoCancellation, noiseSuppression: settings.noiseSuppression, autoGainControl: settings.autoGainControl };
-  if (settings.micId) constraints.deviceId = { exact: settings.micId };
-  try {
-    await audio.start({ mic: !TEST, constraints });
-    if (TEST) { fakeMic = fakeMic || new FakeMic(); fakeMic.start(); log('test mode: scripted microphone'); }
-  } catch (e) {
+const micConstraints = () => { const c = { echoCancellation: settings.echoCancellation, noiseSuppression: settings.noiseSuppression, autoGainControl: settings.autoGainControl }; if (settings.micId) c.deviceId = { exact: settings.micId }; return c; };
+
+/** Opens sound (and the microphone when asked). Returns whether the microphone is in use. */
+async function openAudio ({ mic }) {
+  if (audio.ctx && audio.mode && audio.mode !== settings.output && audio.live.size === 0) { audio.output = settings.output; await audio.rebuild('the sound output setting changed'); }
+  audio.output = settings.output;
+  if (!TEST && listener) audio.setSinkFactory(() => listener.createAudioPort());
+  let micOk = mic; let r;
+  try { r = await audio.start({ mic, constraints: micConstraints() }); } catch (e) {
+    if (!mic) throw e;
     micOk = false;
     log('microphone not available: ' + (e.name || '') + ' ' + e.message);
     if (settings.micId) { settings.micId = ''; saveSettings(); }
-    try { await audio.start({ mic: false }); } catch (e2) { return fail('Sound could not start. Reload and tap Start again.', e2); }
-    toast('No microphone access: tap the big button to buzz, and mark answers yourself.', 6000);
+    r = await audio.start({ mic: false });
   }
   audio.setVolume(settings.volume);
-  if (micOk && !TEST) audio.setSink(listener.createAudioPort());
-  if (micOk) { $('mic').classList.add('on'); $('micLabel').textContent = TEST ? 'Scripted microphone (test)' : (audio.micInfo.label || 'Microphone on'); }
-  log(`audio: ${audio.sampleRate} Hz, state ${audio.state}, output latency ${Math.round((audio.latency || 0) * 1000)} ms; mic ${micOk ? JSON.stringify(audio.micInfo) : 'none'}`);
+  if (r && !r.audible) toast('Tap the big button once more to start the sound.', 6000);
+  showMic();
+  return micOk;
+}
+
+function showMic () {
+  const on = TEST ? !!fakeMic : !!audio.track;
+  $('mic').classList.toggle('on', on);
+  $('micLabel').textContent = TEST ? (fakeMic ? 'Scripted microphone (test)' : 'Microphone off') : (on ? (audio.micInfo.label || 'Microphone on') : 'Microphone off');
+}
+
+async function start () {
+  if (phase !== 'ready') return;
+  $('status').textContent = 'Starting…';
+  let micOk;
+  try {
+    micOk = await openAudio({ mic: !TEST });
+    if (TEST) { micOk = true; fakeMic = fakeMic || new FakeMic(); fakeMic.start(); showMic(); log('test mode: scripted microphone'); }
+  } catch (e) { return fail('Sound could not start. Reload and tap Start again.', e); }
+  if (!micOk) toast('No microphone access: tap the big button to buzz, and mark answers yourself.', 6000);
+  log(`audio: ${audio.describe()}; output latency about ${Math.round((audio.latency || 0) * 1000)} ms; timers ${usingWorkerClock() ? 'in a worker' : 'on the page'}`);
   await requestWakeLock();
+  if (!sessionId) sessionId = Date.now();
   game = new Game({
-    feed, narrator, listener, audio, judge,
+    feed, narrator, listener, audio, judge, assistant,
     rules: () => ({ ...settings.rules, ...(micOk ? {} : { buzzSensitivity: 'off', selfJudge: true }) }),
-    ui: { onState, onQuestion, onProgress, onPart, onHeard, onResult, onAnswer, onScore: renderScore, onCommand: cmd => { if (cmd === 'faster' || cmd === 'slower') { audio.tone('tick'); nudgeSpeed(cmd === 'faster' ? 1 : -1); } }, onError: e => toast('Something went wrong: ' + (e.message || e)) },
+    ui: {
+      onState, onQuestion, onProgress, onPart, onHeard, onResult, onAnswer, onScore: renderScore, onAssistant,
+      onSaved: rec => { rec.session = rec.session || sessionId; historyStore.save(rec, rec.session); },
+      onCommand,
+      onNotice: what => { if (what === 'hold-off') toast('The reader will no longer stop at every sound (too many false alarms).', 5000); },
+      onError: e => toast('Something went wrong: ' + (e.message || e))
+    },
     log
   });
   game.verify = async clip => { if (!listener || listener.mode === 'answer') return null; const r = await listener.transcribe(clip.samples, clip.sampleRate); return r.text; };
   game.history = sessionHistory;
-  window.carbowl = { game, audio, narrator, listener, tts, feed, settings, log: logLines, fakeMic, speakAsUser };
+  window.carbowl = { game, audio, narrator, listener, tts, feed, settings, log: logLines, fakeMic, speakAsUser, historyStore };
+  autoPaused = false;
   setPhase('running');
-  game.run().then(() => { saveHistory(); if (phase === 'running') { setPhase('ready'); $('status').textContent = 'Stopped'; } releaseWakeLock(); });
+  game.run().then(() => { if (phase === 'running') { setPhase('ready'); $('status').textContent = 'Stopped'; } releaseWakeLock(); showMic(); renderTopics(); });
+}
+
+/** Requests the quiz passes on because they concern the app's own settings. */
+function onCommand (cmd) {
+  audio.tone('tick');
+  if (cmd === 'faster' || cmd === 'slower') nudgeSpeed(cmd === 'faster' ? 1 : -1);
+  else if (cmd === 'louder' || cmd === 'quieter') {
+    settings.volume = +Math.min(1.5, Math.max(0.2, settings.volume + (cmd === 'louder' ? 0.2 : -0.2))).toFixed(2);
+    saveSettings(); audio.setVolume(settings.volume);
+    toast(`Volume ${settings.volume.toFixed(1)}×`, 1400);
+  }
+}
+
+// Requests to the assistant that need more than the app itself knows are answered by a model; the
+// built-in ones (repeat, earlier clues, the last answer, the score) need nothing.
+const assistant = { available: () => false, ask: async () => ({}) };
+function onAssistant (who, text) {
+  $('heard').innerHTML = who === 'user' ? `You asked: <b>${escapeHtml(text)}</b>` : `<b>${escapeHtml(text)}</b>`;
 }
 
 async function requestWakeLock () {
@@ -277,57 +334,80 @@ async function requestWakeLock () {
 }
 function releaseWakeLock () { try { if (wakeLock) wakeLock.release(); } catch (e) { /* already released */ } wakeLock = null; }
 
+// The quiz keeps going with the screen locked or another app in front (in a Safari tab; see
+// STANDALONE above): nothing is paused when the page is hidden. Coming back to it, the screen lock
+// is held off again and sound is nudged in case it was parked.
 document.addEventListener('visibilitychange', () => {
   log('page ' + document.visibilityState);
-  if (document.visibilityState === 'hidden') {
-    if (phase === 'running' && game && !TEST) { autoPaused = true; game.requestPause(); }
-  } else {
-    if (phase === 'running') { requestWakeLock(); audio.resume(); }
-  }
-});
-audio.addEventListener('state', e => {
-  if (phase !== 'running' || !game) return;
-  if (e.detail !== 'running' && !game.paused) { autoPaused = true; game.requestPause(); toast('Sound was interrupted. Tap Resume when ready.', 5000); }
-});
-audio.addEventListener('mic', async e => {
-  if (e.detail !== 'ended' || phase !== 'running') return;
-  try {
-    await audio.reopenMic({ constraints: { echoCancellation: settings.echoCancellation, noiseSuppression: settings.noiseSuppression, autoGainControl: settings.autoGainControl } });
-    audio.setSink(listener.createAudioPort());
-    log('microphone reopened after it ended');
-  } catch (err) { log('could not reopen the microphone: ' + err.message); toast('The microphone dropped out. Tap to buzz, or End and Start again.', 6000); }
+  if (document.visibilityState === 'visible' && phase === 'running') { requestWakeLock(); audio.kick(); }
 });
 
-// ---------- session history ----------
-const sessionHistory = [];
-/** After a reload (iOS discards background tabs), carry on with the same score if the session is recent. */
-function restoreHistory () {
-  const last = LS.get('lastSession', null);
-  if (!last || !Array.isArray(last.items) || Date.now() - last.at > 6 * 3600 * 1000) return;
-  for (const h of last.items) {
-    if (!h || (h.type !== 'tossup' && h.type !== 'bonus')) continue;
-    sessionHistory.push({ ...h, parts: h.parts || [], q: { set: { name: h.set || '' }, category: h.cat || '' } });
+// When sound or the microphone really is gone (a phone call, a route that vanished) the quiz waits,
+// silently, and picks up by itself when the audio engine reports that all is well again.
+let troubleTimer = null;
+audio.addEventListener('health', e => {
+  const h = e.detail;
+  renderDiag();
+  if (phase !== 'running' || !game || TEST) return;
+  if (h.ok) {
+    if (autoPaused && game.paused) { autoPaused = false; log('sound and microphone are back; carrying on'); game.resume({ quiet: true }); }
+    return;
   }
-  if (sessionHistory.length) log(`restored ${sessionHistory.length} questions from the session that was open earlier`);
-}
-function saveHistory () {
-  const slim = sessionHistory.slice(-200).map(h => h.type === 'tossup'
-    ? { type: 'tossup', id: h.id, result: h.result, points: h.points, heard: h.heard, answer: h.answer, text: h.text, at: h.at, buzzOffset: h.buzzOffset, powerOffset: h.powerOffset, set: h.q && h.q.set && h.q.set.name, cat: h.q && h.q.category }
-    : { type: 'bonus', id: h.id, result: h.result, points: h.points, at: h.at, leadin: h.leadin, parts: (h.parts || []).map(p => ({ text: p.text, answer: p.answer, result: p.result, points: p.points, heard: p.heard })), set: h.q && h.q.set && h.q.set.name, cat: h.q && h.q.category });
-  LS.set('lastSession', { at: Date.now(), items: slim });
+  if (troubleTimer) return;
+  troubleTimer = setTimer(() => {
+    troubleTimer = null;
+    if (audio.health.ok || phase !== 'running' || !game || game.paused) return;
+    autoPaused = true;
+    game.requestPause({ quiet: true });
+    $('heard').textContent = 'Waiting: ' + audio.health.problems.join('; ') + '.';
+  }, 2200);
+});
+audio.addEventListener('mic', e => {
+  showMic();
+  if (e.detail === 'lost' && phase === 'running') toast('The microphone could not be re-opened. Tap the button to buzz, or End and Start again.', 7000);
+});
+audio.addEventListener('rebuilt', () => { showMic(); renderDiag(); });
+
+// ---------- history ----------
+// The questions of the session in hand; everything ever asked is in historyStore.
+const sessionHistory = [];
+/** Loads what is kept, and carries on with the latest session if it was in use recently (iOS discards background tabs). */
+async function restoreHistory () {
+  await historyStore.open();
+  // Earlier versions kept one session in the browser's small key-value store: move it over once.
+  const old = LS.get('lastSession', null);
+  if (old && Array.isArray(old.items) && old.items.length) {
+    old.items.forEach((h, i) => { if (h && (h.type === 'tossup' || h.type === 'bonus')) historyStore.save({ ...h, at: h.at || (old.at || 1) + i, q: { set: { name: h.set || '' }, category: h.cat || '' } }, old.at || 1); });
+    log(`moved ${old.items.length} questions from the earlier storage into the history`);
+  }
+  LS.del('lastSession');
+  const all = await historyStore.all();
+  const carry = resumableSession(all);
+  if (carry) { sessionId = carry.session; for (const r of carry.items) sessionHistory.push(expandRecord(r)); }
+  log(`history: ${all.length} questions kept${historyStore.persistent ? '' : ' in memory only (this browser offers no lasting storage)'}${carry ? `; carrying on the session of ${sessionHistory.length}` : ''}`);
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) { /* best effort */ }
 }
 
 // ---------- rendering: main screen ----------
 const STATUS = {
-  idle: 'Ready', starting: 'Starting…', offline: 'Waiting for a connection…', empty: 'No questions match', between: '', result: '', paused: 'Paused'
+  idle: 'Ready', starting: 'Starting…', offline: 'Waiting for a connection…', empty: 'No questions match', between: '', result: '', paused: 'Paused', assistant: 'One moment…', asking: 'Yes?'
 };
+let readingKey = '';
 function onState (state, extra = {}) {
   app.dataset.state = state;
-  if (state === 'reading') { app.dataset.result = ''; $('status').textContent = extra.repeat ? 'Reading again…' : (extra.type === 'bonus' ? (extra.part >= 0 ? `Bonus, part ${extra.part + 1}` : 'Bonus') : 'Tossup'); if (!extra.rest && !extra.repeat) { $('answer').hidden = true; $('heard').textContent = ''; } } else if (state === 'waiting') $('status').textContent = view.rec && view.rec.type === 'bonus' ? 'Your answer?' : 'Buzz?';
+  if (state === 'reading') {
+    app.dataset.result = '';
+    $('status').textContent = extra.repeat ? 'Reading again…' : (extra.type === 'bonus' ? (extra.part >= 0 ? `Bonus, part ${extra.part + 1}` : 'Bonus') : 'Tossup');
+    // A new stretch of the same question (after "go back", or the assistant) keeps what is on screen.
+    const key = `${view.rec && view.rec.id}:${extra.type}:${extra.part}`;
+    if (!extra.rest && !extra.repeat && key !== readingKey) { $('answer').hidden = true; $('heard').textContent = ''; }
+    readingKey = key;
+  } else if (state === 'waiting') $('status').textContent = view.rec && view.rec.type === 'bonus' ? 'Your answer?' : 'Buzz?';
   else if (state === 'answering') $('status').textContent = 'Listening…';
   else if (state === 'judging') $('status').textContent = 'Were you right?';
+  else if (state === 'paused' && extra.quiet) $('status').textContent = 'Waiting for sound…';
   else if (STATUS[state] !== undefined && STATUS[state] !== '') $('status').textContent = STATUS[state];
-  if (state === 'idle') { $('mic').classList.remove('on', 'speaking'); $('micLabel').textContent = 'Microphone off'; }
+  if (state === 'idle') { $('mic').classList.remove('speaking'); readingKey = ''; }
   renderMain();
 }
 
@@ -345,7 +425,7 @@ function onQuestion (rec) {
   const pm = $('powerMark');
   if (rec.type === 'tossup' && rec.powerOffset >= 0 && rec.text.length) { pm.hidden = false; pm.style.left = (100 * rec.powerOffset / rec.text.length).toFixed(1) + '%'; } else pm.hidden = true;
   renderText();
-  $('stage').scrollTop = 0;
+  $('stageBody').scrollTop = 0;
   renderMain();
 }
 function onPart (rec, i) { view.part = i; view.offset = 0; renderText(); }
@@ -376,12 +456,12 @@ function renderText () {
     });
     el.innerHTML = html;
   }
-  const stage = $('stage');
+  const stage = $('stageBody');
   const spans = el.querySelectorAll('.unread'); const lastUnread = spans[spans.length - 1];
   if (lastUnread) { const r = lastUnread.getBoundingClientRect(); const s = stage.getBoundingClientRect(); if (r.top > s.bottom - 40) stage.scrollTop += r.top - s.bottom + 80; }
 }
 function onHeard (text, flag) {
-  $('heard').innerHTML = text === '…' ? 'Hearing you…' : `Heard: <b>${escapeHtml(text)}</b>${flag === 'ignored' ? ' (not a buzz)' : ''}`;
+  $('heard').innerHTML = !text ? '' : text === '…' ? 'Hearing you…' : text === '?' ? 'Say that again?' : `Heard: <b>${escapeHtml(text)}</b>${flag === 'ignored' ? ' (not a buzz)' : ''}`;
 }
 function resultWord (rec, part) {
   if (rec.type === 'tossup') return { power: ['Correct, power · +15', 'good'], ten: ['Correct · +10', 'good'], neg: ['Incorrect · −5', 'bad'], wrong: ['Incorrect', 'bad'], dead: ['Time', 'time'], skipped: ['Skipped', 'time'] }[rec.result] || ['', ''];
@@ -403,9 +483,11 @@ function onAnswer (rec, part) {
   if (rec !== view.rec) return;
   const html = rec.type === 'tossup' ? rec.answer : (rec.parts[part] || {}).answer;
   if (!html) return;
-  $('answer').innerHTML = `<small>Answer</small>${safeAnswerHtml(html)}`;
+  // The answer has its own band under the question, so showing it never moves or covers the question.
+  const { main, notes } = splitAnswerHtml(html);
+  $('answer').innerHTML = `<small>Answer</small><div class="main">${main}</div>${notes ? `<div class="alts">${notes}</div>` : ''}`;
   $('answer').hidden = false;
-  const stage = $('stage'); stage.scrollTop = stage.scrollHeight;
+  $('stageFoot').scrollTop = 0;
 }
 function renderScore () {
   const s = game ? game.score() : scoreOf(sessionHistory);
@@ -416,9 +498,7 @@ function renderScore () {
   if (s.bonuses) parts.push(`PPB <b>${s.ppb.toFixed(1)}</b>`);
   parts.push(`<b>${s.points}</b> pts`);
   el.innerHTML = parts.join(' · ');
-  saveHistory();
 }
-function scoreOf (history) { const g = new Game({ feed: {}, narrator: {}, listener: new EventTarget(), audio: {}, judge }); g.history = history; return g.score(); }
 
 function renderMain () {
   const main = $('btnMain'); const st = app.dataset.state;
@@ -426,8 +506,9 @@ function renderMain () {
   let label = 'Start'; let hint = ''; let enabled = phase === 'ready';
   if (phase === 'boot' || phase === 'loading') { label = 'Getting ready'; enabled = false; } else if (phase === 'setup' || phase === 'downloading') { label = 'Start'; enabled = false; } else if (phase === 'error') { label = 'Reload'; enabled = true; } else if (running) {
     enabled = true;
-    if (st === 'paused') { label = 'Resume'; hint = 'or say “resume”'; } else if (st === 'judging') { label = 'I was right'; hint = 'or tap “I was wrong”'; } else if (st === 'answering') { label = 'Done'; hint = 'tap when you have answered'; } else if (st === 'reading' || st === 'waiting') { label = 'Buzz'; hint = view.rec && view.rec.type === 'bonus' ? 'or just say your answer' : 'or say “buzz”'; } else if (st === 'between' || st === 'result') { label = 'Next'; hint = 'or wait'; } else { label = '…'; enabled = false; }
+    if (st === 'paused') { label = 'Resume'; hint = 'or say “resume”'; } else if (st === 'judging') { label = 'I was right'; hint = 'or tap “I was wrong”'; } else if (st === 'answering' || st === 'asking') { label = 'Done'; hint = st === 'asking' ? 'tap when you have asked' : 'tap when you have answered'; } else if (st === 'assistant') { label = 'Carry on'; hint = 'or say “thanks”'; } else if (st === 'reading' || st === 'waiting') { label = 'Buzz'; hint = view.rec && view.rec.type === 'bonus' ? 'or just say your answer' : 'or say “buzz”'; } else if (st === 'between' || st === 'result') { label = 'Next'; hint = 'or wait'; } else { label = '…'; enabled = false; }
   } else if (phase === 'ready') hint = sessionHistory.length ? 'continue' : 'tap once; then it is hands-free';
+  if ($('topics')) $('topics').hidden = phase !== 'ready';
   main.innerHTML = `${label}${hint ? `<small>${hint}</small>` : ''}`;
   main.disabled = !enabled;
   $('btnPause').textContent = st === 'paused' ? 'Resume' : 'Pause';
@@ -471,12 +552,14 @@ $('btnMain').addEventListener('click', () => {
   if (phase === 'error') { location.reload(); return; }
   if (phase === 'ready') { start(); return; }
   if (phase !== 'running' || !game) return;
+  // Every tap is also a chance to start sound that the browser was holding back.
+  audio.kick();
   const st = app.dataset.state;
-  if (st === 'paused') { autoPaused = false; audio.resume(); game.act('resume'); } else if (st === 'judging') game.act('right');
+  if (st === 'paused') { autoPaused = false; game.act('resume'); } else if (st === 'judging') game.act('right');
   else if (st === 'between' || st === 'result') game.act('next');
   else game.act('buzz');
 });
-$('btnPause').addEventListener('click', () => { if (!game) return; if (game.paused) { autoPaused = false; audio.resume(); game.act('resume'); } else game.requestPause(); });
+$('btnPause').addEventListener('click', () => { if (!game) return; audio.kick(); if (game.paused) { autoPaused = false; game.act('resume'); } else game.requestPause(); });
 $('btnSkip').addEventListener('click', () => { if (game) game.act(app.dataset.state === 'between' || app.dataset.state === 'result' ? 'next' : 'skip'); });
 $('btnStop').addEventListener('click', () => { if (game) game.stop(); });
 function overrideLast (right) {
@@ -514,6 +597,8 @@ function buildSettings () {
     ${sel('rules.mode', 'Read', [['both', 'Tossups and bonuses'], ['tossups', 'Tossups only'], ['bonuses', 'Bonuses only']])}
     <div class="field"><span>Difficulty<small>None ticked means any difficulty.</small></span><span class="rowb" style="margin:0"><button type="button" class="btn" data-act="diff-college">College</button><button type="button" class="btn" data-act="diff-all">All</button></span></div>
     <div class="chips" id="diffChips">${diffs}</div>
+    <div class="field" style="margin-top:8px"><span>Topics<small>One-tap switches. Math and Computer Science are part of Science &gt; Other Science in QBReader.</small></span></div>
+    <div class="chips" id="quickTopics">${topicChips()}</div>
     <div class="field" style="margin-top:8px"><span>Categories<small>From QBReader. Open a category for its subcategories.</small></span><span class="rowb" style="margin:0"><button type="button" class="btn" data-act="cat-all">All</button><button type="button" class="btn" data-act="cat-phil">Philosophy</button></span></div>
     <div id="catList">${cats}</div>
     <label class="field"><span>Years</span><span><select id="s-minYear" data-year="minYear">${years.map(([y, t]) => `<option value="${y}" ${f.minYear === y ? 'selected' : ''}>${t}</option>`).join('')}</select> to <select id="s-maxYear" data-year="maxYear">${years.map(([y, t]) => `<option value="${y}" ${f.maxYear === y ? 'selected' : ''}>${t}</option>`).join('')}</select></span></label>
@@ -528,14 +613,24 @@ function buildSettings () {
     <div class="rowb"><button type="button" class="btn" data-act="test-voice">Play a sample</button></div>
   </section>
   <section class="sec"><h3>Listening</h3>
-    ${sel('rules.buzzSensitivity', 'Buzz by voice', [['normal', 'Normal: “buzz”, or any single short word'], ['strict', 'Strict: only “buzz”'], ['off', 'Off: tap the screen to buzz']])}
+    ${sel('rules.buzzSensitivity', 'Buzz by voice', [['normal', 'Normal: “buzz”, or any single short word'], ['strict', 'Strict: only “buzz”'], ['off', 'Off: tap the screen to buzz']], 'Normal also asks “say that again?” (two falling notes) when it hears something short it cannot make out.')}
+    ${sel('rules.holdOnVoice', 'Stop reading when I speak', [['auto', 'Automatic'], ['on', 'Always'], ['off', 'Never']], 'The reader stops at the first sound of a voice and carries on if it was nothing. Automatic gives this up when noise keeps setting it off.')}
     ${sw('rules.bonusDirectAnswer', 'Bonuses: just say the answer', 'Off means saying “buzz” first, as for tossups.')}
+    ${sw('rules.assistant', 'Spoken requests', '“Repeat the question”, “what were the earlier clues”, “go back”, “what was the answer”, “spell that”, “what’s my score”.')}
     ${sel('leniency', 'Judging by ear', [[0.86, 'Strict'], [0.8, 'Normal'], [0.74, 'Lenient']], 'How closely what was heard must sound like the answer.')}
     ${sel('asr', 'Recognition model', Object.entries(RECOGNIZERS).map(([k, x]) => [k, `${x.label}${manifest && manifest.bundles['asr-' + k] ? ' (' + mb(manifest.bundles['asr-' + k].bytes) + ')' : ''}`]), 'Accurate hears names better; Light loads faster and uses less memory.')}
     ${sw('echoCancellation', 'Echo cancellation', 'Keeps the reader’s own voice out of the microphone. Leave on.')}
     ${sw('noiseSuppression', 'Noise suppression')}
     ${sw('autoGainControl', 'Automatic microphone level')}
-    <label class="field"><span>Microphone</span><select id="s-micId" data-k="micId"><option value="">Default</option></select></label>
+    <label class="field"><span>Microphone<small>In the car leave this on Default, which is the car’s own microphone. Choosing the iPhone’s moves the sound to the phone as well.</small></span><select id="s-micId" data-k="micId"><option value="">Default</option></select></label>
+  </section>
+  <section class="sec"><h3>Car, lock screen, other apps</h3>
+    <p class="note">With CarPlay or Bluetooth the car shows Carbowl as a phone call: that is how it gets the car’s microphone. <b>The car’s call volume is separate from its music volume</b>: play the test tone and turn the volume knob up while it sounds. Carbowl keeps going with the phone locked or another app in front as long as it runs in a Safari tab${STANDALONE ? ' — <b>it is running as a Home Screen app now, which iOS cuts off from the microphone in the background: open it in Safari instead</b>' : ''}.</p>
+    ${sel('output', 'Sound output', [['element', 'For car and lock screen (recommended)'], ['direct', 'Direct']], 'Change only if sound is missing or distorted. Takes effect at the next Start.')}
+    <div class="rowb"><button type="button" class="btn" data-act="test-tone">Play test tone</button><button type="button" class="btn" data-act="car-check">Run the car check</button><button type="button" class="btn" data-act="reconnect">Re-connect sound</button>${navigator.mediaDevices && navigator.mediaDevices.selectAudioOutput ? '<button type="button" class="btn" data-act="choose-output">Choose where sound plays</button>' : ''}</div>
+    <p class="note">“Re-connect sound” lets go of the microphone and the speaker and takes them up again; use it if the car connected after you started and the sound stayed on the phone.</p>
+    <pre class="log" id="checkView" hidden></pre>
+    <div class="rowb" id="checkActions" hidden><button type="button" class="btn primary" data-act="copy-check">Copy the car check report</button></div>
   </section>
   <section class="sec"><h3>Timing</h3>
     ${rng('rules.tossupDeadSec', 'Time to buzz after a tossup', 2, 12, 1, ' s')}
@@ -553,13 +648,12 @@ function buildSettings () {
     ${sw('rules.bonusPointsSpoken', 'Say the points after each bonus')}
   </section>
   <section class="sec"><h3>Help</h3>
-    <p class="note">While a tossup is read, say <b>buzz</b>, wait for the beep, then answer. For a bonus, just say the answer during or after each part. Any time: <b>skip question</b>, <b>repeat question</b>, <b>pause quiz</b>, <b>resume</b>. Right after a verdict: <b>I was right</b> or <b>I was wrong</b>. The big button always works as a buzzer.</p>
-    <p class="note">On iPhone, use Safari with the screen on. If the car treats the microphone as a phone call, that is expected.</p>
+    <p class="note">While a tossup is read, say <b>buzz</b>, wait for the beep, then answer. The reader stops as soon as it hears you. Two falling notes mean “say that again?”. Said buzz by mistake? <b>Never mind</b>. For a bonus, just say the answer during or after each part.</p>
+    <p class="note">Any time: <b>repeat the question</b>, <b>what were the earlier clues</b>, <b>go back</b> (the last sentence), <b>skip question</b>, <b>pause quiz</b>, <b>resume</b>, <b>read faster</b> / <b>slower</b>, <b>volume up</b> / <b>down</b>. Also: <b>what was the answer</b>, <b>spell that</b>, <b>what’s my score</b>, <b>what set is this from</b>, <b>what can I say</b>. Right after a verdict: <b>I was right</b> or <b>I was wrong</b>. The big button always works as a buzzer.</p>
   </section>
   <section class="sec"><h3>Troubleshooting</h3>
-    <div class="rowb"><button type="button" class="btn" data-act="sound-check">Sound check</button><button type="button" class="btn" data-act="copy-log">Copy log</button><button type="button" class="btn" data-act="show-log">Show log</button><button type="button" class="btn danger" data-act="clear-models">Delete downloaded models</button></div>
+    <div class="rowb"><button type="button" class="btn" data-act="copy-log">Copy log</button><button type="button" class="btn" data-act="show-log">Show log</button><button type="button" class="btn danger" data-act="clear-models">Delete downloaded models</button></div>
     <p class="note" id="diagInfo"></p>
-    <pre class="log" id="checkView" hidden></pre>
     <pre class="log" id="logView" hidden></pre>
     <p class="note">Carbowl ${VERSION}. Questions and answer checking from <a href="https://www.qbreader.org" target="_blank" rel="noopener">QBReader</a>. Speech runs on this device with sherpa-onnx, Moonshine, Silero VAD and Supertonic or Piper voices.</p>
   </section>`;
@@ -575,9 +669,31 @@ function renderDiag () {
   const bits = [];
   if (tts && tts.info) bits.push(`voice ${tts.info.voice}, speed factor ${tts.realTimeFactor ? tts.realTimeFactor.toFixed(2) : '—'}`);
   if (listener && listener.info) bits.push(`recognition ${listener.info.asr}`);
-  if (audio.ctx) bits.push(`audio ${audio.sampleRate} Hz ${audio.state}; mic ${audio.micInfo.label || 'none'}${audio.micInfo.echoCancellation === false ? ' (no echo cancellation!)' : ''}`);
+  if (audio.ctx) bits.push(audio.describe() + (audio.health.ok ? '' : ' — ' + audio.health.problems.join('; ')));
   el.textContent = bits.join(' · ');
 }
+
+// ---------- topics (one-tap switches on the start screen and in Settings) ----------
+function topicChips () {
+  const f = settings.filters;
+  return QUICK_TOPICS.map(t => `<label class="chip"><input type="checkbox" id="topic-${t.key}-${topicChips.n = (topicChips.n || 0) + 1}" data-topic="${t.key}" ${topicOn(f, t) ? 'checked' : ''}>${escapeHtml(t.label)}</label>`).join('');
+}
+function renderTopics () {
+  const el = $('topics'); if (!el) return;
+  const f = settings.filters;
+  const extra = f.subs.filter(s => !QUICK_TOPICS.some(t => t.sub === s)).length;
+  el.innerHTML = `<h2>Topics</h2><div class="chips">${topicChips()}</div><p class="fine">${extra ? `Also on: ${extra} more ${extra === 1 ? 'subcategory' : 'subcategories'} chosen in Settings. ` : ''}Other categories, difficulty and years are in Settings.</p>${STANDALONE ? '<p class="warn">Opened from the Home Screen, Carbowl loses the microphone when the phone locks or another app is in front. For the car, open it in Safari.</p>' : ''}`;
+  el.hidden = phase !== 'ready';
+}
+function toggleTopic (key, on) {
+  const topic = QUICK_TOPICS.find(t => t.key === key); if (!topic) return false;
+  const next = setTopic(settings.filters, topic, on);
+  if (!activeCategories(next).length) { toast('Keep at least one topic on.'); return false; }
+  settings.filters = next; saveSettings(); feed.setFilters(next);
+  log(`topic ${topic.label} ${on ? 'on' : 'off'}`);
+  return true;
+}
+$('topics').addEventListener('change', e => { const t = e.target; if (t.dataset && t.dataset.topic) { toggleTopic(t.dataset.topic, t.checked); renderTopics(); } });
 
 let needEngines = false; let needPhrases = false; let needMic = false;
 function onSettingInput (e) {
@@ -594,14 +710,22 @@ function onSettingInput (e) {
     if (t.dataset.k === 'speed') { settings.speed = +clampSpeed(v).toFixed(2); saveSettings(); renderSpeed(); }
     if (t.dataset.k === 'volume') audio.setVolume(v);
     if (['echoCancellation', 'noiseSuppression', 'autoGainControl', 'micId'].includes(t.dataset.k)) needMic = true;
+    if (t.dataset.k === 'output' && phase === 'running') toast('The sound output changes at the next Start.', 4000);
     if (t.dataset.k === 'showText') renderText();
     return;
   }
+  if (t.dataset.topic) { if (!toggleTopic(t.dataset.topic, t.checked)) t.checked = !t.checked; syncCats(); renderTopics(); return; }
   const f = settings.filters;
   if (t.dataset.diff !== undefined) { const d = Number(t.dataset.diff); f.difficulties = t.checked ? [...new Set([...f.difficulties, d])].sort((a, b) => a - b) : f.difficulties.filter(x => x !== d); } else if (t.dataset.sub) { f.subs = t.checked ? [...new Set([...f.subs, t.dataset.sub])] : f.subs.filter(x => x !== t.dataset.sub); syncCats(); } else if (t.dataset.alt) { f.alts = t.checked ? [...new Set([...f.alts, t.dataset.alt])] : f.alts.filter(x => x !== t.dataset.alt); } else if (t.dataset.catbox) { const c = CATEGORY_TREE.find(x => x.name === t.dataset.catbox); f.subs = t.checked ? [...new Set([...f.subs, ...c.subs])] : f.subs.filter(x => !c.subs.includes(x)); if (t.checked) f.alts = [...new Set([...f.alts, ...c.alts])]; syncCats(); } else if (t.dataset.year) { f[t.dataset.year] = Number(t.value); if (f.minYear > f.maxYear) { if (t.dataset.year === 'minYear') f.maxYear = f.minYear; else f.minYear = f.maxYear; $('s-minYear').value = f.minYear; $('s-maxYear').value = f.maxYear; } } else return;
   saveSettings(); feed.setFilters(f);
+  syncTopics(); renderTopics();
+}
+function syncTopics () {
+  const box = $('quickTopics'); if (!box) return;
+  box.querySelectorAll('[data-topic]').forEach(i => { const t = QUICK_TOPICS.find(x => x.key === i.dataset.topic); i.checked = !!t && topicOn(settings.filters, t); });
 }
 function syncCats () {
+  syncTopics();
   const f = settings.filters;
   for (const c of CATEGORY_TREE) {
     const d = $('catList').querySelector(`details[data-cat="${CSS.escape(c.name)}"]`); if (!d) continue;
@@ -622,103 +746,269 @@ $('settingsBody').addEventListener('click', e => {
 async function settingsAction (name) {
   const f = settings.filters;
   if (name === 'diff-college') { f.difficulties = [7, 8, 9, 10]; } else if (name === 'diff-all') { f.difficulties = DIFFICULTIES.map(d => d.value); } else if (name === 'cat-all') { f.subs = CATEGORY_TREE.flatMap(c => c.subs); f.alts = ALL_ALTERNATES.slice(); } else if (name === 'cat-phil') { f.subs = ['Philosophy']; f.alts = ALL_ALTERNATES.slice(); }
-  if (name.startsWith('diff-') || name.startsWith('cat-')) { saveSettings(); feed.setFilters(f); $('diffChips').querySelectorAll('[data-diff]').forEach(i => { i.checked = f.difficulties.includes(Number(i.dataset.diff)); }); syncCats(); return; }
+  if (name.startsWith('diff-') || name.startsWith('cat-')) { saveSettings(); feed.setFilters(f); $('diffChips').querySelectorAll('[data-diff]').forEach(i => { i.checked = f.difficulties.includes(Number(i.dataset.diff)); }); syncCats(); renderTopics(); return; }
   if (name === 'test-voice') {
     if (!narrator) { toast('The voice is still loading.'); return; }
     if (phase === 'running') { toast('End the session to try voices.'); return; }
-    try { await audio.start({ mic: false }); audio.setVolume(settings.volume); await narrator.say('This thinker argued that the mind at birth is a blank slate. For ten points, name this author of An Essay Concerning Human Understanding.'); } catch (e) { toast('Could not play: ' + e.message); }
+    try { await openAudio({ mic: false }); await narrator.say('This thinker argued that the mind at birth is a blank slate. For ten points, name this author of An Essay Concerning Human Understanding.'); } catch (e) { toast('Could not play: ' + e.message); }
+  } else if (name === 'test-tone') {
+    // Played the way the quiz plays (microphone open), so that in a car it comes out at the call volume, which is the one to set.
+    try {
+      const idle = phase !== 'running';
+      if (idle) await openAudio({ mic: true });
+      for (let i = 0; i < 3; i++) { audio.tone('test'); await sleep(1750); }
+      if (idle && phase !== 'running') { audio.closeMic(); showMic(); }
+    } catch (e) { toast('Could not play: ' + e.message); }
+  } else if (name === 'reconnect') {
+    if (!audio.ctx) { toast('Sound starts when you tap Start.'); return; }
+    toast('Re-connecting sound…', 2500);
+    await audio.rebuild('asked for in Settings', { reopen: true });
+    audio.kick(); showMic(); renderDiag();
+    toast(audio.describe(), 6000);
+  } else if (name === 'choose-output') {
+    try { const d = await audio.chooseOutput(); toast('Sound goes to ' + ((d && d.label) || 'the default output')); } catch (e) { toast('No output chosen: ' + (e.message || e)); }
   } else if (name === 'copy-log') {
-    const text = [`Carbowl ${VERSION}`, navigator.userAgent, 'settings ' + JSON.stringify({ ...settings, filters: { ...settings.filters, alts: `${settings.filters.alts.length} alternates` } }), ...logLines].join('\n');
-    try { await navigator.clipboard.writeText(text); toast('Log copied'); } catch (e) { const pre = $('logView'); pre.hidden = false; pre.textContent = text; toast('Select and copy the log below.'); }
+    const text = [`Carbowl ${VERSION}`, navigator.userAgent, 'settings ' + JSON.stringify({ ...settings, filters: { ...settings.filters, alts: `${settings.filters.alts.length} alternates` } }), 'audio ' + audio.describe(), '--- audio events ---', ...audio.events, '--- log ---', ...logLines].join('\n');
+    await copyText(text, 'Log copied', 'logView');
   } else if (name === 'show-log') { const pre = $('logView'); pre.hidden = !pre.hidden; if (!pre.hidden) { pre.textContent = logLines.slice(-120).join('\n'); pre.scrollTop = pre.scrollHeight; } } else if (name === 'clear-models') {
     if (phase === 'running') { toast('End the session first.'); return; }
     await clearModelCache(); toast('Downloaded models deleted'); if (tts) tts.terminate(); if (listener) listener.terminate(); tts = null; listener = null; narrator = null; $('settings').close(); await checkSetup();
-  } else if (name === 'sound-check') soundCheck();
+  } else if (name === 'car-check') carCheck();
+  else if (name === 'copy-check') await copyText(carCheck.report || '', 'Report copied: paste it to Claude', 'checkView');
 }
 
-/** Plays the reader while watching the microphone, to show whether the app hears itself, then listens for a buzz. */
-async function soundCheck () {
-  const out = $('checkView'); out.hidden = false;
-  const say = line => { out.textContent += line + '\n'; out.scrollTop = out.scrollHeight; log('sound check: ' + line); };
-  out.textContent = '';
+/** Copies text; where the browser will not allow that, shows it for copying by hand. */
+async function copyText (text, done, fallbackId) {
+  try { await navigator.clipboard.writeText(text); toast(done); } catch (e) { const pre = $(fallbackId); if (pre) { pre.hidden = false; pre.textContent = text; } toast('Select and copy the text shown.'); }
+}
+
+// ---------- car check ----------
+// A guided two-minute test for the car (parked): it opens sound and the microphone the way the quiz
+// does, asks what was heard, measures what the microphone picks up, tries a buzz in quiet and over
+// the reader, and checks that everything keeps running with the phone locked. The report is made to
+// be copied out and sent on, because none of this can be tried anywhere but in the car.
+async function carCheck () {
+  const out = $('checkView'); out.hidden = false; out.textContent = '';
+  const lines = [];
+  const say = line => { lines.push(line); out.textContent = lines.join('\n'); out.scrollTop = out.scrollHeight; log('car check: ' + line); };
   if (phase === 'running') { say('End the session first.'); return; }
   if (!narrator || !listener) { say('The speech models are still loading.'); return; }
-  try {
-    const constraints = { echoCancellation: settings.echoCancellation, noiseSuppression: settings.noiseSuppression, autoGainControl: settings.autoGainControl }; if (settings.micId) constraints.deviceId = { exact: settings.micId };
-    await audio.start({ mic: true, constraints }); audio.setVolume(settings.volume);
-    if (!soundCheck.port) { audio.setSink(listener.createAudioPort()); soundCheck.port = true; }
-  } catch (e) { say('Could not open the microphone: ' + e.message); return; }
-  const levels = []; const utts = [];
-  const onL = e => levels.push(e.detail.rms); const onU = e => utts.push(e.detail);
-  listener.addEventListener('level', onL); listener.addEventListener('utterance', onU);
+  if (carCheck.running) return;
+  carCheck.running = true; $('checkActions').hidden = true;
+  const utts = []; const starts = []; const levels = [];
+  const onU = e => utts.push(e.detail); const onS = e => starts.push(e.detail); const onL = e => levels.push(e.detail.rms);
+  listener.addEventListener('utterance', onU); listener.addEventListener('speechstart', onS); listener.addEventListener('level', onL);
   const db = v => (20 * Math.log10(Math.max(1e-6, v))).toFixed(0);
   const mean = a => a.length ? Math.sqrt(a.reduce((s, v) => s + v * v, 0) / a.length) : 0;
+  // Speaking must never hang the check, even when sound itself is what is broken.
+  const speak = text => Promise.race([narrator.say(text), sleep(Math.max(8000, text.length * 150)).then(() => 'stalled')]).then(how => { if (how === 'stalled') say('   (the reader did not finish that sentence: sound is stalled)'); return how; });
+  const firstUtterance = async (ms, needText = false) => { const n0 = utts.length; const t0 = performance.now(); while (performance.now() - t0 < ms) { const got = utts.slice(n0).find(u => !needText || String(u.text || '').trim()); if (got) return got; await sleep(100); } return utts.slice(n0)[0] || null; };
+  const yesNo = async question => {
+    await speak(question);
+    listener.setMode('answer'); audio.tone('listen');
+    const u = await firstUtterance(7000, true);
+    listener.setMode('off');
+    const t = u ? ' ' + String(u.text).toLowerCase().replace(/[^a-z' ]/g, ' ') + ' ' : '';
+    const no = /\b(no|nope|not|nothing|didn't|did not|negative|couldn't)\b/.test(t); const yes = /\b(yes|yeah|yep|yup|i did|it did|heard|sure|affirmative|correct)\b/.test(t);
+    return { answer: no ? 'no' : yes ? 'yes' : (u ? 'unclear' : 'no reply heard'), heard: u ? u.text : '' };
+  };
+  const told = r => `${r.answer}${r.heard ? ` (heard: "${r.heard}")` : ''}`;
   try {
-    say(`Microphone: ${audio.micInfo.label || 'default'}; echo cancellation ${audio.micInfo.echoCancellation === false ? 'OFF' : 'on'}; audio ${audio.sampleRate} Hz.`);
-    say('1. Stay quiet for two seconds…');
-    listener.setMode('spot'); levels.length = 0;
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    const quiet = mean(levels);
-    say(`   background level ${db(quiet)} dB`);
-    say('2. Reading a sentence. Stay quiet…');
-    levels.length = 0; utts.length = 0;
-    await narrator.say('This philosopher wrote that the unexamined life is not worth living, and was sentenced to drink hemlock by an Athenian jury.');
-    await new Promise(resolve => setTimeout(resolve, 900));
-    const during = mean(levels);
-    say(`   level while reading ${db(during)} dB (${(20 * Math.log10(Math.max(1e-6, during) / Math.max(1e-6, quiet))).toFixed(0)} dB above background)`);
-    if (utts.length) say(`   The microphone heard the reader: "${utts.map(u => u.text).join(' / ')}". Expect false buzzes: lower the volume, try another microphone, or lengthen the pause between sentences.`); else say('   Good: the reader was not picked up as speech.');
-    say('3. Now say “buzz”…');
-    utts.length = 0; audio.tone('listen');
-    const tEnd = performance.now() + 6000;
-    while (performance.now() < tEnd && !utts.length) await new Promise(resolve => setTimeout(resolve, 100));
-    if (!utts.length) say('   Nothing heard. Check the microphone choice and permission.'); else { const { classifyBuzz } = await import('./intent.js'); const u = utts[0]; const b = classifyBuzz(u, settings.rules.buzzSensitivity === 'off' ? 'normal' : settings.rules.buzzSensitivity); say(`   Heard "${u.text}" at ${db(u.level)} dB -> ${b.buzz ? 'counts as a buzz' : 'would NOT count as a buzz'}; recognised in ${u.asrMs} ms.`); }
+    say(`Carbowl ${VERSION} car check, ${new Date().toISOString()}`);
+    say(navigator.userAgent);
+    say(`Opened ${STANDALONE ? 'as a Home Screen app (iOS stops its microphone in the background: use Safari)' : 'in the browser'}; page ${document.visibilityState}; timers ${usingWorkerClock() ? 'in a worker' : 'on the page'}; sound output setting "${settings.output}"; microphone setting ${settings.micId ? 'a chosen one' : 'Default'}.`);
+
+    say('1. Opening sound and the microphone, as the quiz does…');
+    const micOk = await openAudio({ mic: true });
+    await sleep(700);
+    let rep = await audio.report();
+    say(`   ${rep.now}`);
+    say(`   audio session: ${rep.session}; state: ${rep.health}; output chooser ${rep.outputChooser ? 'available' : 'not available'}`);
+    say(`   devices: ${rep.devices.join(' | ') || 'none listed'}`);
+    if (!micOk) say('   NO MICROPHONE. Allow it for this site (Safari: the page menu > Website Settings > Microphone), then run the check again.');
+
+    say('2. Test tone, three times. Turn the car volume up while it plays (the car has a separate volume for calls).');
+    for (let i = 0; i < 3; i++) { audio.tone('test'); await sleep(1750); }
+    const tone = await yesNo('Did you hear the tone? Say yes or no.');
+    say(`   Heard the tone? ${told(tone)}`);
+    const voice = await yesNo('And can you hear this voice clearly? Say yes or no.');
+    say(`   Hears the voice clearly? ${told(voice)}`);
+
+    if (micOk) {
+      say('3. Stay quiet for two seconds…');
+      listener.setMode('spot'); levels.length = 0;
+      await sleep(2000);
+      const quiet = mean(levels);
+      say(`   background level ${db(quiet)} dB`);
+      say('   Reading a sentence. Stay quiet…');
+      levels.length = 0; utts.length = 0; starts.length = 0;
+      await speak('This philosopher wrote that the unexamined life is not worth living, and was sentenced to drink hemlock by an Athenian jury.');
+      await sleep(900);
+      const during = mean(levels);
+      say(`   level while the reader talks ${db(during)} dB (${(20 * Math.log10(Math.max(1e-6, during) / Math.max(1e-6, quiet))).toFixed(0)} dB above background); voice onsets ${starts.length}`);
+      if (utts.some(u => String(u.text).trim())) say(`   The microphone heard the reader: "${utts.map(u => u.text).filter(Boolean).join(' / ')}". The quiz recognises its own words and ignores them, but expect the reader to stop and start: try a lower volume.`); else say('   Good: the reader was not picked up as speech.');
+
+      say('4. After each beep, say "buzz".');
+      await speak('After each beep, say buzz.');
+      let hits = 0;
+      for (let i = 0; i < 3; i++) {
+        listener.setMode('spot'); audio.tone('listen');
+        const u = await firstUtterance(4500);
+        listener.setMode('off');
+        if (!u) { say(`   try ${i + 1}: nothing heard`); continue; }
+        const b = classifyBuzz(u, 'normal'); if (b.buzz) hits++;
+        say(`   try ${i + 1}: heard "${u.text}" (${(u.dur || 0).toFixed(2)} s, ${db(u.level)} dB, recognised in ${u.asrMs} ms) -> ${b.buzz ? 'a buzz' : String(u.text).trim() ? 'not a buzz' : 'a sound that could not be made out (the quiz would ask for it again)'}`);
+        await sleep(600);
+      }
+      say(`   ${hits} of 3 heard as a buzz.`);
+
+      say('5. Now say "buzz" once WHILE the reader is talking.');
+      await speak('Now I will read for a while. Say buzz once, while I am talking.');
+      const passage = 'In one work, this thinker imagined prisoners chained in a cave who take the shadows on its wall for reality. That work also describes a just city ruled by philosopher kings, and divides the soul into three parts. His teacher appears in most of his dialogues, among them the Symposium and the Phaedo. He founded a school in Athens called the Academy, where Aristotle studied for twenty years.';
+      utts.length = 0; starts.length = 0; listener.setMode('spot');
+      const reading = narrator.read(chunkForSpeech(passage), { group: narrator.newGroup('cc'), gap: settings.rules.sentenceGapSec });
+      await Promise.race([reading.done, sleep(45000)]);
+      reading.stop();
+      await sleep(900); listener.setMode('off');
+      const heard = utts.filter(u => String(u.text).trim());
+      const own = heard.filter(u => isEcho(u.text, passage)); const yours = heard.filter(u => !isEcho(u.text, passage)); const blanks = utts.length - heard.length;
+      say(`   voice onsets ${starts.length}; heard ${utts.length} time(s): ${yours.length} yours, ${own.length} the reader's own voice, ${blanks} not made out`);
+      for (const u of utts) say(`     "${u.text}" ${(u.dur || 0).toFixed(2)} s, ${db(u.level)} dB${String(u.text).trim() && isEcho(u.text, passage) ? ' (the reader)' : ''}`);
+      if (yours.some(u => classifyBuzz(u, 'normal').buzz)) say('   Your buzz over the reader was heard.');
+      else if (blanks || yours.length) say('   Something was heard over the reader but not as a buzz: the quiz would stop and ask you to say it again.');
+      else say('   Your buzz over the reader was NOT heard. In the quiz, buzz in the short pause between sentences, or lengthen that pause (Settings > Timing).');
+    }
+
+    say('6. Lock the phone now. I will count to twelve; unlock it after about ten.');
+    await speak('Last step. Lock the phone now. I will count to twelve. Unlock it after about ten.');
+    const seen = [];
+    const mark = () => seen.push({ state: document.visibilityState, wall: performance.now(), clock: audio.time, frames: audio.beat.frames });
+    document.addEventListener('visibilitychange', mark);
+    const gaps = []; let last = performance.now();
+    for (let i = 1; i <= 12; i++) { await speak(String(i)); await sleep(700); const t = performance.now(); gaps.push(Math.round(t - last)); last = t; }
+    document.removeEventListener('visibilitychange', mark);
+    mark();
+    if (!seen.some(s => s.state === 'hidden')) say('   The page never went to the background (the phone was not locked), so this step shows nothing.');
+    for (let i = 0; i < seen.length - 1; i++) {
+      if (seen[i].state !== 'hidden') continue;
+      const a = seen[i]; const b = seen[i + 1];
+      say(`   hidden for ${((b.wall - a.wall) / 1000).toFixed(1)} s: the sound clock moved ${(b.clock - a.clock).toFixed(1)} s and the microphone delivered ${((b.frames - a.frames) * 640 / 16000).toFixed(1)} s of audio${micOk ? '' : ' (no microphone open)'}`);
+    }
+    say(`   time per count (ms): ${gaps.join(', ')}`);
+    const kept = await yesNo('Did the counting carry on while the phone was locked? Say yes or no.');
+    say(`   Counting carried on while locked? ${told(kept)}`);
+
+    rep = await audio.report();
+    say(`At the end: ${rep.now}; state: ${rep.health}`);
     say(`Speech speed factor ${tts.realTimeFactor.toFixed(2)} (below 0.7 is comfortable).`);
-  } catch (e) { say('Check failed: ' + e.message); } finally { listener.setMode('off'); listener.removeEventListener('level', onL); listener.removeEventListener('utterance', onU); renderDiag(); }
+    say('Done. Tap "Copy the car check report" and paste it to Claude.');
+    await speak('Done. Thank you.');
+  } catch (e) { say('The check stopped: ' + (e && e.message ? e.message : e)); } finally {
+    listener.setMode('off');
+    listener.removeEventListener('utterance', onU); listener.removeEventListener('speechstart', onS); listener.removeEventListener('level', onL);
+    carCheck.report = [...lines, '', '--- what happened to the audio system ---', ...audio.events, '', '--- log (latest) ---', ...logLines.slice(-160)].join('\n');
+    if (phase !== 'running') { audio.closeMic(); showMic(); }
+    carCheck.running = false; $('checkActions').hidden = false; renderDiag();
+  }
 }
 
 $('openSettings').addEventListener('click', () => { buildSettings(); needEngines = false; needPhrases = false; needMic = false; $('settings').showModal(); });
 $('settings').addEventListener('close', async () => {
   if (!activeCategories(settings.filters).length) { settings.filters.subs = ['Philosophy']; saveSettings(); feed.setFilters(settings.filters); toast('No category was ticked, so Philosophy is back on.'); }
+  renderTopics();
   if (phase === 'running') {
-    if (needMic) { try { await audio.reopenMic({ constraints: { echoCancellation: settings.echoCancellation, noiseSuppression: settings.noiseSuppression, autoGainControl: settings.autoGainControl, ...(settings.micId ? { deviceId: { exact: settings.micId } } : {}) } }); audio.setSink(listener.createAudioPort()); log('microphone reopened with new settings: ' + JSON.stringify(audio.micInfo)); } catch (e) { log('microphone change failed: ' + e.message); toast('That microphone could not be opened.'); } }
+    if (needMic) { try { await audio.reopenMic({ constraints: micConstraints() }); showMic(); log('microphone reopened with new settings: ' + audio.describe()); } catch (e) { log('microphone change failed: ' + e.message); toast('That microphone could not be opened.'); } }
     if (needEngines) toast('Voice type and recognition model change after you end this session.', 4500);
     return;
   }
   if (needEngines && manifest && `${settings.voice}|${settings.asr}` !== enginesFor) { await checkSetup(); } else if (needPhrases && narrator && phase === 'ready') preparePhrases();
 });
 
-// ---------- review ----------
-function renderReview () {
-  const items = sessionHistory.slice().reverse();
-  const pts = p => `<span class="pts ${p > 0 ? 'good' : p < 0 ? 'bad' : ''}">${p > 0 ? '+' : ''}${p}</span>`;
-  const body = items.length ? `<ul class="hist">${items.map((h, k) => {
-    const idx = sessionHistory.length - 1 - k;
-    if (h.type === 'tossup') {
-      return `<li><div class="h-top"><span>Tossup · ${escapeHtml((h.q && h.q.set && h.q.set.name) || '')}</span><span>${escapeHtml(h.result || '')} ${pts(h.points)}</span></div><div class="h-ans">${safeAnswerHtml(h.answer)}</div>${h.heard ? `<div class="h-heard">heard: ${escapeHtml(h.heard)}</div>` : ''}<details class="h-q"><summary>Question</summary>${escapeHtml(h.text || '')}</details>${h.result && h.result !== 'skipped' && h.buzzOffset !== null ? `<div class="rowb"><button type="button" class="btn" data-ov="${idx}" data-right="${h.result === 'power' || h.result === 'ten' ? 0 : 1}">${h.result === 'power' || h.result === 'ten' ? 'Mark incorrect' : 'Mark correct'}</button></div>` : ''}</li>`;
-    }
-    return `<li><div class="h-top"><span>Bonus · ${escapeHtml((h.q && h.q.set && h.q.set.name) || '')}</span><span>${pts(h.points)}</span></div>${(h.parts || []).map((p, i) => `<div class="h-ans">${safeAnswerHtml(p.answer)}</div><div class="h-heard">${escapeHtml(p.result || 'not reached')}${p.heard ? ` · heard: ${escapeHtml(p.heard)}` : ''}${p.result ? ` · <button type="button" class="btn quiet" style="padding:2px 6px;min-height:0" data-ov="${idx}" data-part="${i}" data-right="${p.result === 'correct' ? 0 : 1}">${p.result === 'correct' ? 'mark incorrect' : 'mark correct'}</button>` : ''}</div>`).join('')}<details class="h-q"><summary>Question</summary>${escapeHtml(h.leadin || '')} ${(h.parts || []).map(p => escapeHtml(p.text)).join(' ')}</details></li>`;
-  }).join('')}</ul><div class="rowb"><button type="button" class="btn" data-copy="missed">Copy missed questions</button><button type="button" class="btn danger" data-copy="clear">Clear this session</button></div>` : '<p class="note">Nothing yet. Questions you hear appear here with their answers, so you can fix a verdict or copy the ones you missed.</p>';
-  $('reviewBody').innerHTML = body;
+// ---------- review: this session, and everything kept from earlier ones ----------
+const review = { tab: 'session', groups: [] };
+const pts = p => `<span class="pts ${p > 0 ? 'good' : p < 0 ? 'bad' : ''}">${p > 0 ? '+' : ''}${p}</span>`;
+const scoreLine = s => [s.tossups ? `${s.powers + s.tens}/${s.tossups} tossups${s.negs ? `, ${s.negs} neg` : ''}` : '', s.bonuses ? `${s.ppb.toFixed(1)} per bonus` : '', `${s.points} points`].filter(Boolean).join(' · ');
+const when = ms => new Date(ms).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+
+/** One question as a list item. where/idx say which list it sits in, so that a verdict can be corrected from here. */
+function reviewItem (h, where, idx) {
+  const q = h.q || {};
+  const tag = [h.alt || q.alternate_subcategory || q.subcategory || q.category || h.cat, (q.set && q.set.name) || h.set].filter(Boolean).map(escapeHtml).join(' · ');
+  if (h.type === 'tossup') {
+    const right = h.result === 'power' || h.result === 'ten';
+    const fixable = h.result && h.result !== 'skipped' && h.buzzOffset !== null && h.buzzOffset !== undefined;
+    return `<li><div class="h-top"><span>Tossup${tag ? ' · ' + tag : ''}</span><span>${escapeHtml(h.result || '')} ${pts(h.points || 0)}</span></div><div class="h-ans">${safeAnswerHtml(h.answer)}</div>${h.heard ? `<div class="h-heard">heard: ${escapeHtml(h.heard)}</div>` : ''}<details class="h-q"><summary>Question</summary>${escapeHtml(h.text || '')}</details>${fixable ? `<div class="rowb"><button type="button" class="btn" data-ov="${idx}" data-in="${where}" data-right="${right ? 0 : 1}">${right ? 'Mark incorrect' : 'Mark correct'}</button></div>` : ''}</li>`;
+  }
+  return `<li><div class="h-top"><span>Bonus${tag ? ' · ' + tag : ''}</span><span>${pts(h.points || 0)}</span></div>${(h.parts || []).map((p, i) => `<div class="h-ans">${safeAnswerHtml(p.answer)}</div><div class="h-heard">${escapeHtml(p.result || 'not reached')}${p.heard ? ` · heard: ${escapeHtml(p.heard)}` : ''}${p.result ? ` · <button type="button" class="btn quiet" style="padding:2px 6px;min-height:0" data-ov="${idx}" data-in="${where}" data-part="${i}" data-right="${p.result === 'correct' ? 0 : 1}">${p.result === 'correct' ? 'mark incorrect' : 'mark correct'}</button>` : ''}</div>`).join('')}<details class="h-q"><summary>Question</summary>${escapeHtml(h.leadin || '')} ${(h.parts || []).map(p => escapeHtml(p.text)).join(' ')}</details></li>`;
 }
-$('openReview').addEventListener('click', () => { renderReview(); $('review').showModal(); });
+
+async function renderReview () {
+  const tabs = `<div class="tabs" role="tablist"><button type="button" role="tab" data-tab="session" aria-selected="${review.tab === 'session'}">This session</button><button type="button" role="tab" data-tab="all" aria-selected="${review.tab === 'all'}">All sessions</button></div>`;
+  if (review.tab === 'session') {
+    const items = sessionHistory.slice().reverse();
+    $('reviewBody').innerHTML = tabs + (items.length
+      ? `<p class="note">${scoreLine(scoreOf(sessionHistory))}</p><ul class="hist">${items.map((h, k) => reviewItem(h, 'session', sessionHistory.length - 1 - k)).join('')}</ul><div class="rowb"><button type="button" class="btn" data-copy="missed">Copy missed questions</button><button type="button" class="btn danger" data-copy="clear">Clear this session</button></div>`
+      : '<p class="note">Nothing yet. Questions you hear appear here with their answers, so you can fix a verdict or copy the ones you missed. Earlier sessions are under “All sessions”.</p>');
+    return;
+  }
+  const records = (await historyStore.all()).map(expandRecord);
+  // Questions of the session in hand are shown from their live records, so that corrections made here reach the scoreboard.
+  const live = new Map(sessionHistory.map(h => [`${h.at || 0}-${h.id}`, h]));
+  review.groups = groupSessions(records).map(g => { const items = g.items.map(r => live.get(r.key) || r); return { ...g, items, score: scoreOf(items) }; });
+  if (!records.length) { $('reviewBody').innerHTML = tabs + `<p class="note">No history yet. Every question you hear is kept on this ${historyStore.persistent ? 'device' : 'page (this browser offers no lasting storage, so it is lost on reload)'}, with what you said and whether it was right.</p>`; return; }
+  const total = scoreOf(records);
+  const cats = byCategory(records).slice(0, 8).map(c => `${escapeHtml(c.cat)} ${c.right}/${c.asked}`).join(' · ');
+  $('reviewBody').innerHTML = tabs + `<p class="note"><b>${review.groups.length} ${review.groups.length === 1 ? 'session' : 'sessions'}, ${records.length} questions.</b> ${scoreLine(total)}</p><p class="note">Right by topic: ${cats}</p>` +
+    review.groups.map((g, i) => `<details class="sess" data-sess="${i}"><summary><b>${escapeHtml(when(g.start))}</b><small>${g.items.length} ${g.items.length === 1 ? 'question' : 'questions'} · ${scoreLine(g.score)}</small></summary><ul class="hist"></ul></details>`).join('') +
+    `<div class="rowb"><button type="button" class="btn" data-copy="missed-all">Copy all missed questions</button><button type="button" class="btn" data-copy="export">Save everything as a file</button><button type="button" class="btn danger" data-copy="clear-all">Delete all history</button></div>${historyStore.persistent ? '' : '<p class="note">This browser offers no lasting storage (private browsing?), so history is lost when the page reloads.</p>'}`;
+}
+$('openReview').addEventListener('click', async () => { await renderReview(); $('review').showModal(); });
+// A session's questions are only laid out when it is opened: a long history would otherwise be slow to show.
+$('reviewBody').addEventListener('toggle', e => {
+  const d = e.target;
+  if (!d.matches || !d.matches('details.sess') || !d.open) return;
+  const g = review.groups[Number(d.dataset.sess)]; const ul = d.querySelector('ul');
+  if (g && !ul.childElementCount) ul.innerHTML = g.items.slice().reverse().map((h, k) => reviewItem(h, 's' + d.dataset.sess, g.items.length - 1 - k)).join('');
+}, true);
 $('reviewBody').addEventListener('click', async e => {
+  const tab = e.target.closest('[data-tab]');
+  if (tab) { e.preventDefault(); review.tab = tab.dataset.tab; await renderReview(); return; }
   const ov = e.target.closest('[data-ov]');
   if (ov) {
     e.preventDefault();
-    const rec = sessionHistory[Number(ov.dataset.ov)]; const g = game || Object.assign(new Game({ feed: {}, narrator: {}, listener: new EventTarget(), audio: {}, judge }), { history: sessionHistory });
-    g.override(rec, ov.dataset.right === '1', ov.dataset.part === undefined ? undefined : Number(ov.dataset.part));
-    renderReview(); renderScore(); return;
+    const list = ov.dataset.in === 'session' ? sessionHistory : (review.groups[Number(ov.dataset.in.slice(1))] || {}).items;
+    const rec = list && list[Number(ov.dataset.ov)];
+    if (!rec) return;
+    const live = sessionHistory.includes(rec);
+    // The quiz in progress records the correction itself; anything else is corrected and filed here.
+    const g = live && game ? game : Object.assign(new Game({ feed: {}, narrator: {}, listener: new EventTarget(), audio: {}, judge }), { history: live ? sessionHistory : [rec] });
+    const changed = g.override(rec, ov.dataset.right === '1', ov.dataset.part === undefined ? undefined : Number(ov.dataset.part));
+    if (changed && !(live && game)) historyStore.save(rec, rec.session || sessionId);
+    const open = [...$('reviewBody').querySelectorAll('details.sess[open]')].map(d => d.dataset.sess);
+    await renderReview(); renderScore();
+    for (const s of open) { const d = $('reviewBody').querySelector(`details.sess[data-sess="${s}"]`); if (d) d.open = true; }
+    return;
   }
   const c = e.target.closest('[data-copy]');
   if (!c) return;
   e.preventDefault();
-  if (c.dataset.copy === 'clear') { if (phase === 'running') { toast('End the session first.'); return; } sessionHistory.length = 0; LS.del('lastSession'); renderReview(); renderScore(); return; }
-  const strip = s => String(s || '').replace(/<[^>]*>/g, '');
-  const lines = [];
-  for (const h of sessionHistory) {
-    if (h.type === 'tossup' && !['power', 'ten'].includes(h.result)) lines.push(`TOSSUP: ${h.text}\nANSWER: ${strip(h.answer)}\n`);
-    if (h.type === 'bonus') (h.parts || []).forEach(p => { if (p.result && p.result !== 'correct') lines.push(`BONUS PART: ${p.text}\nANSWER: ${strip(p.answer)}\n`); });
+  const what = c.dataset.copy;
+  if (what === 'clear' || what === 'clear-all') {
+    if (phase === 'running') { toast('End the session first.'); return; }
+    // Deleting is for good, so it takes a second tap.
+    if (c.dataset.sure !== '1') { c.dataset.sure = '1'; c.textContent = what === 'clear' ? 'Tap again to clear this session' : 'Tap again to delete everything'; return; }
+    if (what === 'clear') await historyStore.removeSession(sessionId); else await historyStore.clear();
+    sessionHistory.length = 0; sessionId = 0;
+    await renderReview(); renderScore(); return;
   }
+  if (what === 'export') {
+    const records = await historyStore.all();
+    const blob = new Blob([JSON.stringify({ app: 'Carbowl ' + VERSION, saved: new Date().toISOString(), questions: records }, null, 1)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `carbowl-history-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+    return;
+  }
+  const lines = missedLines(what === 'missed-all' ? await historyStore.all() : sessionHistory);
   try { await navigator.clipboard.writeText(lines.join('\n')); toast(`Copied ${lines.length} missed`); } catch (err) { toast('Copying is not allowed here.'); }
 });
 
@@ -741,7 +1031,13 @@ if (TEST) {
       const saved = { ...settings.rules }; Object.assign(settings.rules, { mode: 'both', betweenSec: 1, tossupDeadSec: 5, bonusAnswerSec: 4 });
       // The "user" clips are made before the game starts, so that speaking them later is instant
       // even on a slow device where the voice is busy reading the question.
-      const clip = async (text, sid) => { const c = await tts.speak(text, { sid, speed: 1, steps: 5, priority: 0 }).promise; const s = await to16k(c); for (let i = 0; i < s.length; i++) s[i] *= 0.5; return s; };
+      // The synthetic voice now and then garbles a short phrase; a clip that the recogniser cannot
+      // make out when played clean is no test of anything, so each one is checked and redone if need be.
+      const clip = async (text, sid) => {
+        let c = null;
+        for (let attempt = 0; attempt < 4; attempt++) { c = await tts.speak(text, { sid, speed: 1, steps: 5 + 2 * attempt, priority: 0 }).promise; if (await soundsRight(text, c)) break; R.steps.push(`re-made the clip "${text}" (attempt ${attempt + 1} was unclear)`); }
+        const s = await to16k(c); for (let i = 0; i < s.length; i++) s[i] *= 0.5; return s;
+      };
       const clips = { buzz: await clip('Buzz.', 2), kant: await clip('Immanuel Kant.', 7), enquiry: await clip('An Enquiry Concerning Human Understanding.', 5), wrong: await clip('I think that was Immanuel Kant.', 0) };
       R.steps.push('user clips prepared');
       const speakAsUser = async key => { fakeMic.say(clips[key].slice()); };
@@ -787,17 +1083,19 @@ if (TEST) {
     try {
       await audio.start({ mic: false });
       const ctx = audio.ctx;
+      R.output = audio.describe();
       await ctx.audioWorklet.addModule(new URL('./workers/capture-worklet.js', import.meta.url).href).catch(() => {});
-      const node = new AudioWorkletNode(ctx, 'carbowl-capture', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1], channelCount: 1, channelCountMode: 'explicit' });
-      const mute = ctx.createGain(); mute.gain.value = 0; node.connect(mute); mute.connect(ctx.destination);
+      const node = new AudioWorkletNode(ctx, 'carbowl-capture', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1], channelCount: 1, channelCountMode: 'explicit', processorOptions: { offset: audio.epoch } });
+      // Tied off exactly as the engine ties off the real microphone path (into the output stream, not the context's destination).
+      const mute = ctx.createGain(); mute.gain.value = 0; node.connect(mute); mute.connect(audio._tail());
       // Stage 1: frames to the main thread, to measure rate, timing and a 1 kHz tone's level.
-      const frames = []; node.port.onmessage = e => frames.push({ n: e.data.samples.length, t: e.data.t, rms: Math.sqrt(e.data.samples.reduce((s, v) => s + v * v, 0) / e.data.samples.length), at: ctx.currentTime });
+      const frames = []; let beats = 0; node.port.onmessage = e => { if (e.data.beat) { beats++; return; } frames.push({ n: e.data.samples.length, t: e.data.t, rms: Math.sqrt(e.data.samples.reduce((s, v) => s + v * v, 0) / e.data.samples.length), at: audio.time }); };
       const osc = ctx.createOscillator(); osc.frequency.value = 1000; const og = ctx.createGain(); og.gain.value = 0.5; osc.connect(og); og.connect(node);
-      const tStart = ctx.currentTime; osc.start();
+      const tStart = audio.time; osc.start();
       await new Promise(resolve => setTimeout(resolve, 2000));
       osc.stop(); osc.disconnect();
       const span = frames.length > 1 ? frames[frames.length - 1].t - frames[0].t : 0;
-      R.contextRate = ctx.sampleRate; R.frames = frames.length; R.frameSize = frames[0] && frames[0].n;
+      R.contextRate = ctx.sampleRate; R.frames = frames.length; R.frameSize = frames[0] && frames[0].n; R.beats = beats;
       R.samplesPerSecond = span ? Math.round((frames.length - 1) * 640 / span) : 0;
       R.toneRms = +(frames.slice(5, -2).reduce((s, f) => s + f.rms, 0) / Math.max(1, frames.length - 7)).toFixed(4); // 0.5 amplitude sine -> 0.3536
       R.stampLagMs = Math.round(1000 * frames.slice(5).reduce((s, f) => s + (f.at - f.t), 0) / Math.max(1, frames.length - 5));
@@ -812,12 +1110,12 @@ if (TEST) {
       await new Promise(resolve => setTimeout(resolve, 600));
       const buf = ctx.createBuffer(1, clip.samples.length, clip.sampleRate); buf.getChannelData(0).set(clip.samples);
       const src = ctx.createBufferSource(); src.buffer = buf; const sg = ctx.createGain(); sg.gain.value = 0.5; src.connect(sg); sg.connect(node);
-      const playedAt = ctx.currentTime + 0.05; src.start(playedAt);
+      const playedAt = audio.time + 0.05; src.start(playedAt - audio.epoch);
       const tEnd = performance.now() + 8000;
       while (performance.now() < tEnd && !heard.length) await new Promise(resolve => setTimeout(resolve, 50));
       listener.setMode('off'); listener.removeEventListener('utterance', onU);
       if (heard.length) { const u = heard[0]; R.heard = u.text; R.utteranceStartsAfterClipStartMs = Math.round(1000 * (u.start - playedAt)); R.utteranceDur = +u.dur.toFixed(2); R.clipDur = +(clip.samples.length / clip.sampleRate).toFixed(2); R.level = +u.level.toFixed(3); R.asrMs = u.asrMs; } else R.heard = null;
-      node.disconnect();
+      node.port.postMessage({ stop: true }); node.disconnect();
       R.ok = R.samplesPerSecond > 15900 && R.samplesPerSecond < 16100 && Math.abs(R.toneRms - 0.3536) < 0.02 && R.monotonic && !!R.heard && /buzz/i.test(R.heard);
     } catch (e) { R.error = String(e && e.stack || e); }
     R.done = true;

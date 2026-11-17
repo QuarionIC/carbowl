@@ -1,9 +1,9 @@
 {
- "version": "0.3.2",
+ "version": "0.3.3",
  "files": {
-  "app.css": "b5781fa8100c08da3df381eaa8342c6a842f7d16d5456a03a4f178514a903191",
+  "app.css": "c113767b5481d22ffae32086045d387fb97f099de660085f9026b1ff7c5f071c",
   "index.html": "a974c340c4538c92be3455052674defe15280766c8426fbe93e8df1aff22cb8a",
-  "js/app.js": "4abfc1ea8bc893a61574451ee2b53f5000fb01e08f8a60581f697217ed3b1a7d",
+  "js/app.js": "5af70474f091676bd8370ad76147611bc119aeeeb6b379c91c68161359d7ab3c",
   "js/assistant.js": "bd0fc02b2c688d8079c385f27be2740fe40b3bcf0966f10b0af20820dfb6cad3",
   "js/audio.js": "2fec7f261b75e6f976758ab0050b61e66190d0bc5d2e74f073eddb28e661bd5e",
   "js/clock.js": "478efdc380a41b91ca26e34594cb3f54d452f12e0c29cb588f4a7a14f123bc04",

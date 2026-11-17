@@ -48,6 +48,7 @@ button:disabled{opacity:.45;cursor:default}
 .stage-body{flex:1 1 0;min-height:3.4em;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;display:flex;flex-direction:column;gap:8px}
 .stage-foot{flex:0 1 auto;max-height:48%;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:4px}
 .stage-head>*,.stage-body>*,.stage-foot>*{flex-shrink:0}
+.stage-body,.stage-foot{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
 /* Where the question runs on above or below what fits, it fades out instead of ending in half a line. */
 .stage-body.more-below:not(.more-above){-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 26px),transparent);mask-image:linear-gradient(to bottom,#000 calc(100% - 26px),transparent)}
 .stage-body.more-above:not(.more-below){-webkit-mask-image:linear-gradient(to bottom,transparent,#000 26px);mask-image:linear-gradient(to bottom,transparent,#000 26px)}

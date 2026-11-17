@@ -16,7 +16,7 @@ import { Assistant, ASSISTANT_MODELS, DEFAULT_ASSISTANT_MODEL } from './assistan
 import { Updater } from './update.js';
 
 // Also read by tools/stamp-version.mjs, which writes it into version.json: run that tool after changing it.
-const VERSION = '0.3.2';
+const VERSION = '0.3.3';
 // ?test in the address swaps the microphone for a scripted one, so the whole loop can be exercised without sound hardware.
 const TEST = new URLSearchParams(location.search).has('test');
 const BASE = new URL('.', document.baseURI).href;
@@ -347,6 +347,9 @@ async function start () {
   game.run().then(() => {
     if (phase === 'running') { setPhase('ready'); $('status').textContent = 'Stopped'; }
     releaseWakeLock(); showMic(); renderTopics();
+    // The topic switches come back under the last question: bring them into view whole (a card cut
+    // off at the answer's edge looks like something hiding behind it), the question a scroll away.
+    requestAnimationFrame(() => { stageBody.scrollTop = stageBody.scrollHeight; noteStage(); });
     // The session is over: an update that was held back goes ahead, and a long session ends with a look for one.
     updater.idle();
     if (Date.now() - updater.lastCheck > 5 * 60000) updater.check('session ended');

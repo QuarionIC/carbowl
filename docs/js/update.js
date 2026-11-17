@@ -36,13 +36,16 @@ export class Updater {
    * @param {string} [o.page] the address of this page without what follows a question mark (default: base)
    * @param {() => string} [o.busy] a reason not to reload just now ('' when nothing is going on)
    * @param {() => string[]} [o.lazy] files this page has not loaded yet (an old copy of those needs no reload)
+   * @param {() => boolean} [o.controlled] whether a service worker is keeping copies of what this page fetches
    * @param {() => void} o.reload reloads the page
    * @param {(state: string, detail: object) => void} [o.onState] checking | current | offline | failed | waiting | reloading | updated | stuck
    * @param {{ get: Function, set: Function, del: Function }} o.store remembers, for this tab, that a reload was made for an update
    * @param {Function} [o.fetch] @param {CacheStorage} [o.caches] @param {SubtleCrypto} [o.subtle] stand-ins for tests
    */
-  constructor ({ version, base, page, busy, lazy, reload, onState, store, log, fetch, caches, subtle, reloadDelayMs = 900, maxReloads = 2, timeoutMs = 20000 }) {
+  constructor ({ version, base, page, busy, lazy, controlled, reload, onState, store, log, fetch, caches, subtle, reloadDelayMs = 900, maxReloads = 2, timeoutMs = 20000 }) {
     this.version = version; this.base = base; this.page = page || base;
+    this.controlled = controlled || (() => typeof navigator !== 'undefined' && !!(navigator.serviceWorker && navigator.serviceWorker.controller));
+    this._hasShell = false; this._filled = false;
     this.busy = busy || (() => ''); this.lazy = lazy || (() => []); this.reload = reload; this.onState = onState || (() => {});
     this.store = store; this.log = log || (() => {});
     this.fetch = fetch || ((...a) => globalThis.fetch(...a));
@@ -79,6 +82,10 @@ export class Updater {
     if (!newer && !inUse.length) {
       // Up to date. (Old copies of files not loaded yet are replaced quietly: they would be fetched afresh anyway.)
       if (wrong.length) this._fetchAll(info, wrong).catch(() => {});
+      // An offline copy with holes in it (a first visit: the page was loaded before the service worker
+      // was there to keep it) is filled in, once, so that the next start needs no connection.
+      const absent = this._hasShell && this.controlled() && !this._filled ? Object.keys(info.files).filter(f => held[f] === undefined) : [];
+      if (absent.length) { this._filled = true; this.log(`update: completing the offline copy (${absent.length} file(s))`); this._fetchAll(info, absent, 'no-cache').catch(() => {}); }
       if (tried.to === this.version) { this.store.del('update'); this.log(`update: now running ${this.version}`); return this._set('updated'); }
       return this._set('current');
     }
@@ -141,10 +148,12 @@ export class Updater {
    */
   async _held (info) {
     const out = {};
+    this._hasShell = false;
     if (!this.caches || !this.subtle) return out;
     try {
       const names = (await this.caches.keys()).filter(n => n.startsWith(SHELL_CACHE_PREFIX));
       if (!names.length) return out;
+      this._hasShell = true;
       const stores = await Promise.all(names.map(n => this.caches.open(n)));
       await Promise.all(Object.keys(info.files).map(async path => {
         const url = this._url(path);
@@ -160,8 +169,12 @@ export class Updater {
   /** Where a file of the list lives. The page itself ("index.html") is the address this page was opened by. */
   _url (path) { return path === 'index.html' ? this.page : new URL(path, this.base).href; }
 
-  /** Fetches files afresh (past every cache) and checks each against its published checksum. */
-  async _fetchAll (info, paths) {
+  /**
+   * Fetches files and checks each against its published checksum.
+   * @param {'reload'|'no-cache'} [mode] reload: afresh, past every cache; no-cache: the browser may
+   *   keep its copy after asking the site whether it is still good
+   */
+  async _fetchAll (info, paths, mode = 'reload') {
     const jobs = paths.map(p => ({ path: p, url: this._url(p) }));
     let failed = '';
     const next = async () => {
@@ -169,7 +182,7 @@ export class Updater {
         const job = jobs.shift();
         if (!job || failed) return;
         try {
-          const got = await this._get(job.url, { cache: 'reload' });
+          const got = await this._get(job.url, { cache: mode });
           if (!got.ok) throw new Error('HTTP ' + got.status);
           if (this.subtle && await sha256Hex(got.bytes, this.subtle) !== info.files[job.path]) throw new Error('not the published copy');
         } catch (e) { failed = `${job.path}: ${(e && e.message) || e}`; }

@@ -16,7 +16,7 @@ import { Assistant, ASSISTANT_MODELS, DEFAULT_ASSISTANT_MODEL } from './assistan
 import { Updater } from './update.js';
 
 // Also read by tools/stamp-version.mjs, which writes it into version.json: run that tool after changing it.
-const VERSION = '0.3.1';
+const VERSION = '0.3.2';
 // ?test in the address swaps the microphone for a scripted one, so the whole loop can be exercised without sound hardware.
 const TEST = new URLSearchParams(location.search).has('test');
 const BASE = new URL('.', document.baseURI).href;
@@ -123,7 +123,12 @@ async function boot () {
   log(`Carbowl ${VERSION}; ${navigator.userAgent}${STANDALONE ? '; opened as a Home Screen app' : ''}`);
   await restoreHistory();
   buildSettings(); renderScore(); renderMain(); renderSpeed(); renderTopics();
-  if ('serviceWorker' in navigator && !TEST) navigator.serviceWorker.register('sw.js').catch(e => log('offline support not installed: ' + e.message));
+  if ('serviceWorker' in navigator && !TEST) {
+    navigator.serviceWorker.register('sw.js').catch(e => log('offline support not installed: ' + e.message));
+    // Once offline support has taken charge of this page (on a first visit that is a moment after
+    // loading), the copy of the app it keeps is completed, so the next start needs no connection.
+    navigator.serviceWorker.addEventListener('controllerchange', () => updater.check('offline support ready'));
+  }
   // A newer version, when one is published, replaces this one before the speech models are loaded
   // (so that they are loaded once, not twice). Only a moment is spent waiting to hear of one; fetching
   // it, once it is known to exist, is given longer.

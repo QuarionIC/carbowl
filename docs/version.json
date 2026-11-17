@@ -1,9 +1,9 @@
 {
- "version": "0.3.1",
+ "version": "0.3.2",
  "files": {
   "app.css": "b5781fa8100c08da3df381eaa8342c6a842f7d16d5456a03a4f178514a903191",
   "index.html": "a974c340c4538c92be3455052674defe15280766c8426fbe93e8df1aff22cb8a",
-  "js/app.js": "14594ea3fc0c3d6803a775967379aa19813775f114a8e7eee8c948eddc63538b",
+  "js/app.js": "4abfc1ea8bc893a61574451ee2b53f5000fb01e08f8a60581f697217ed3b1a7d",
   "js/assistant.js": "bd0fc02b2c688d8079c385f27be2740fe40b3bcf0966f10b0af20820dfb6cad3",
   "js/audio.js": "2fec7f261b75e6f976758ab0050b61e66190d0bc5d2e74f073eddb28e661bd5e",
   "js/clock.js": "478efdc380a41b91ca26e34594cb3f54d452f12e0c29cb588f4a7a14f123bc04",
@@ -17,7 +17,7 @@
   "js/qb.js": "d6215ab0faa3c113e15fa56f8b1a19373e54427ce9f2ae5e49655b9ae408a1cc",
   "js/speech.js": "b0e56c52819d939464da6c94e31f35b618b6fb00ffd752fa225f8c96b1c7db48",
   "js/speechtext.js": "e9ee824c21001b7a0f86fd44539275b40662cdb448ebfc2fbce4291e61b60dc1",
-  "js/update.js": "43680e549beb7af11c17ea2b5eebb655c4e49d2b960761b53fc02e1e0531e24f",
+  "js/update.js": "4c0bc152751dd352fb6d4524d3e2e7609e915ea1fbb8a3572cd6e23e376420e4",
   "js/workers/capture-worklet.js": "b9409b5ed6a266781ae9d5b97d5af780d1224d9d04e4d4c64701f373975ee485",
   "js/workers/common.js": "02c4999d307734868ddc0b2872e8a8ea96defe35b2f3a7b7873d3428e60b5a7a",
   "js/workers/listen-worker.js": "b7b2fdfd1321b95fd7fb86ce2891162df70e2cda1b758971af327c929b1324d0",

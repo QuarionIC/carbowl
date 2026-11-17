@@ -13,7 +13,7 @@ const sha = text => createHash('sha256').update(text).digest('hex');
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 /** A little site: what is published, what this device holds, and everything that is asked of the network. */
-function world ({ running = '1.0.0', published, held = {}, offline = false, busy = '', lazy = [], stored, republishAfter = 0 } = {}) {
+function world ({ running = '1.0.0', published, held = {}, offline = false, busy = '', lazy = [], stored, republishAfter = 0, controlled = false } = {}) {
   const site = { ...published };                      // path -> text, plus 'version'
   const info = () => ({ version: site.version, files: Object.fromEntries(Object.entries(site).filter(([k]) => k !== 'version').map(([k, v]) => [k, sha(v)])) });
   const calls = []; let versionAsked = 0;
@@ -25,7 +25,7 @@ function world ({ running = '1.0.0', published, held = {}, offline = false, busy
     if (path === 'version.json') { versionAsked++; if (republishAfter && versionAsked > republishAfter) site.version = site.version + '-b'; return new Response(JSON.stringify(info()), { status: 200 }); }
     const key = path === '(page)' ? 'index.html' : path;
     if (!(key in site)) return new Response('not found', { status: 404 });
-    if (init.cache === 'reload') w.held[path] = site[key]; // the service worker keeps what it fetched
+    if (controlled || init.cache === 'reload') w.held[path] = site[key]; // the service worker keeps what it fetched
     return new Response(site[key], { status: 200 });
   };
   const caches = {
@@ -34,7 +34,7 @@ function world ({ running = '1.0.0', published, held = {}, offline = false, busy
   };
   const mem = new Map(stored ? [['update', stored]] : []);
   w.store = { get: k => mem.get(k), set: (k, v) => mem.set(k, v), del: k => mem.delete(k) };
-  w.updater = new Updater({ version: running, base: BASE, fetch, caches, busy: () => w.busy, lazy: () => lazy, reload: () => { w.reloads++; }, onState: s => w.states.push(s), store: w.store, log: l => w.logs.push(l), reloadDelayMs: 5 });
+  w.updater = new Updater({ version: running, base: BASE, fetch, caches, busy: () => w.busy, lazy: () => lazy, controlled: () => controlled, reload: () => { w.reloads++; }, onState: s => w.states.push(s), store: w.store, log: l => w.logs.push(l), reloadDelayMs: 5 });
   w.fetched = () => calls.filter(c => c.cache === 'reload').map(c => c.path).sort();
   return w;
 }
@@ -164,6 +164,24 @@ test('update: when reloading does not help it stops trying by itself and says so
   await w.updater.force();
   assert.equal(w.reloads, 1); assert.equal(w.store.get('update'), undefined);
   assert.deepEqual(w.fetched(), ['(page)', ...Object.keys(V2).filter(k => k !== 'version' && k !== 'index.html')].sort());
+});
+
+test('update: after a first visit the offline copy is completed in the background, once, with no reload', async () => {
+  // Up to date and a service worker in charge, but its copy holds only what was fetched since it took over.
+  const w = world({ published: V1, held: { 'js/game.js': 'game 1' }, controlled: true });
+  assert.equal(await w.updater.check('offline support ready'), 'current');
+  await sleep(30);
+  assert.equal(w.reloads, 0);
+  assert.deepEqual(w.calls.filter(c => c.cache === 'no-cache').map(c => c.path).sort(), ['(page)', 'app.css', 'js/app.js', 'vendor/anthropic-sdk.js'], 'what was missing is asked for, the browser free to use its own copy');
+  assert.equal(w.fetched().length, 0, 'nothing is fetched past the cache for this');
+  assert.deepEqual(Object.keys(w.held).sort(), ['(page)', 'app.css', 'js/app.js', 'js/game.js', 'vendor/anthropic-sdk.js']);
+  w.calls.length = 0;
+  assert.equal(await w.updater.check(), 'current'); await sleep(20);
+  assert.deepEqual(w.calls.map(c => c.path), ['version.json'], 'once is enough');
+  // With no service worker in charge of the page nothing would keep what is fetched, so nothing is.
+  const loose = world({ published: V1, held: { 'js/game.js': 'game 1' } });
+  assert.equal(await loose.updater.check(), 'current'); await sleep(20);
+  assert.deepEqual(loose.calls.map(c => c.path), ['version.json']);
 });
 
 test('update: two checks at once are one check', async () => {

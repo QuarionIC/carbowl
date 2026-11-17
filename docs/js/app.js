@@ -12,8 +12,9 @@ import { TtsClient, ListenClient, loadManifest, requiredFiles, cacheStatus, down
 import { HistoryStore, expandRecord, groupSessions, resumableSession, scoreOf, missedLines, byCategory } from './history.js';
 import { classifyBuzz, isEcho } from './intent.js';
 import { sleep, setTimer, usingWorkerClock } from './clock.js';
+import { Assistant, ASSISTANT_MODELS, DEFAULT_ASSISTANT_MODEL } from './assistant.js';
 
-const VERSION = '0.2.0';
+const VERSION = '0.3.0';
 // ?test in the address swaps the microphone for a scripted one, so the whole loop can be exercised without sound hardware.
 const TEST = new URLSearchParams(location.search).has('test');
 const BASE = new URL('.', document.baseURI).href;
@@ -41,6 +42,9 @@ const DEFAULTS = {
   // How sound leaves the page: 'element' is the one that is heard beside an open microphone on an
   // iPhone (in a car especially) and keeps going with the phone locked; 'direct' is the older way.
   output: 'element',
+  // Which model answers "Moderator, ..." questions. (The key it needs is kept apart from these
+  // settings: see assistantKey below.)
+  assistantModel: DEFAULT_ASSISTANT_MODEL,
   showText: true
 };
 function loadSettings () {
@@ -52,6 +56,7 @@ function loadSettings () {
   if (from < 3 && (s.speed === undefined || SPEED.earlier.some(v => Math.abs(s.speed - v) < 0.001))) out.speed = SPEED.standard;
   if (from < 4 && s.rules && Math.abs((s.rules.sentenceGapSec || 0) - 0.12) < 0.001) out.rules.sentenceGapSec = DEFAULT_RULES.sentenceGapSec;
   if (out.output !== 'element' && out.output !== 'direct') out.output = 'element';
+  if (!ASSISTANT_MODELS.some(m => m.id === out.assistantModel)) out.assistantModel = DEFAULT_ASSISTANT_MODEL;
   out.settingsVersion = DEFAULTS.settingsVersion;
   out.speed = +clampSpeed(out.speed).toFixed(2);
   if (!VOICES[out.voice]) out.voice = DEFAULTS.voice;
@@ -61,6 +66,13 @@ function loadSettings () {
 }
 const settings = loadSettings();
 const saveSettings = () => LS.set('settings', settings);
+// The assistant's API key is the listener's own secret. It is stored under a name of its own, never
+// inside the settings (which "Copy log" copies out), and nothing here writes it to the log.
+const assistantKey = {
+  get: () => String(LS.get('assistantKey', '') || ''),
+  set: v => LS.set('assistantKey', String(v).trim()),
+  clear: () => LS.del('assistantKey')
+};
 
 // ---------- log (kept in memory; copied out from Settings for troubleshooting) ----------
 const logLines = [];
@@ -290,6 +302,7 @@ async function start () {
   if (!micOk) toast('No microphone access: tap the big button to buzz, and mark answers yourself.', 6000);
   log(`audio: ${audio.describe()}; output latency about ${Math.round((audio.latency || 0) * 1000)} ms; timers ${usingWorkerClock() ? 'in a worker' : 'on the page'}`);
   await requestWakeLock();
+  assistant.warm(); // fetch the assistant's code now, not when the first question is asked
   if (!sessionId) sessionId = Date.now();
   game = new Game({
     feed, narrator, listener, audio, judge, assistant,
@@ -322,9 +335,39 @@ function onCommand (cmd) {
   }
 }
 
-// Requests to the assistant that need more than the app itself knows are answered by a model; the
-// built-in ones (repeat, earlier clues, the last answer, the score) need nothing.
-const assistant = { available: () => false, ask: async () => ({}) };
+// Requests to the assistant that need more than the app itself knows are answered by a model (see
+// assistant.js); the built-in ones (repeat, earlier clues, the last answer, the score) need nothing.
+//
+// For development only: when the page itself is served from this computer, ?api=http://localhost:PORT
+// points the assistant at a stand-in for the API (tools/mock-anthropic.mjs), which must be on this
+// computer too. On the published site this is ignored, so no link can send a saved key elsewhere.
+function devApi () {
+  const local = h => h === 'localhost' || h === '127.0.0.1' || h === '[::1]';
+  if (!local(location.hostname)) return '';
+  const v = new URLSearchParams(location.search).get('api');
+  if (!v) return '';
+  try { const u = new URL(v); return (u.protocol === 'http:' || u.protocol === 'https:') && local(u.hostname) ? u.origin : ''; } catch (e) { return ''; }
+}
+const topicNames = () => ({ on: QUICK_TOPICS.filter(t => topicOn(settings.filters, t)).map(t => t.label), off: QUICK_TOPICS.filter(t => !topicOn(settings.filters, t)).map(t => t.label) });
+/** "Switch to math": the topics as the assistant was asked to set them. Refused when it would leave no questions at all. */
+function setTopicsByVoice (want) {
+  let next = settings.filters;
+  for (const t of QUICK_TOPICS) if (typeof want[t.key] === 'boolean') next = setTopic(next, t, want[t.key]);
+  if (!activeCategories(next).length) return { ok: false, on: topicNames().on };
+  settings.filters = next; saveSettings(); feed.setFilters(next);
+  log('topics set by voice: ' + (topicNames().on.join(', ') || 'none of the three'));
+  renderTopics(); if ($('catList')) syncCats();
+  return { ok: true, on: topicNames().on };
+}
+const assistant = new Assistant({
+  key: assistantKey.get,
+  model: () => settings.assistantModel,
+  sdk: () => import('../vendor/anthropic-sdk.js'),
+  topics: { get: topicNames, set: setTopicsByVoice },
+  baseURL: devApi(),
+  log
+});
+if (assistant.baseURL) log('assistant: using the stand-in API at ' + assistant.baseURL + ' (development only)');
 function onAssistant (who, text) {
   $('heard').innerHTML = who === 'user' ? `You asked: <b>${escapeHtml(text)}</b>` : `<b>${escapeHtml(text)}</b>`;
 }
@@ -616,13 +659,21 @@ function buildSettings () {
     ${sel('rules.buzzSensitivity', 'Buzz by voice', [['normal', 'Normal: “buzz”, or any single short word'], ['strict', 'Strict: only “buzz”'], ['off', 'Off: tap the screen to buzz']], 'Normal also asks “say that again?” (two falling notes) when it hears something short it cannot make out.')}
     ${sel('rules.holdOnVoice', 'Stop reading when I speak', [['auto', 'Automatic'], ['on', 'Always'], ['off', 'Never']], 'The reader stops at the first sound of a voice and carries on if it was nothing. Automatic gives this up when noise keeps setting it off.')}
     ${sw('rules.bonusDirectAnswer', 'Bonuses: just say the answer', 'Off means saying “buzz” first, as for tossups.')}
-    ${sw('rules.assistant', 'Spoken requests', '“Repeat the question”, “what were the earlier clues”, “go back”, “what was the answer”, “spell that”, “what’s my score”.')}
+    ${sw('rules.assistant', 'Spoken requests', '“Repeat the question”, “what were the earlier clues”, “go back”, “what was the answer”, “spell that”, “what’s my score”; and “Moderator, …” for anything else (see Assistant below).')}
     ${sel('leniency', 'Judging by ear', [[0.86, 'Strict'], [0.8, 'Normal'], [0.74, 'Lenient']], 'How closely what was heard must sound like the answer.')}
     ${sel('asr', 'Recognition model', Object.entries(RECOGNIZERS).map(([k, x]) => [k, `${x.label}${manifest && manifest.bundles['asr-' + k] ? ' (' + mb(manifest.bundles['asr-' + k].bytes) + ')' : ''}`]), 'Accurate hears names better; Light loads faster and uses less memory.')}
     ${sw('echoCancellation', 'Echo cancellation', 'Keeps the reader’s own voice out of the microphone. Leave on.')}
     ${sw('noiseSuppression', 'Noise suppression')}
     ${sw('autoGainControl', 'Automatic microphone level')}
     <label class="field"><span>Microphone<small>In the car leave this on Default, which is the car’s own microphone. Choosing the iPhone’s moves the sound to the phone as well.</small></span><select id="s-micId" data-k="micId"><option value="">Default</option></select></label>
+  </section>
+  <section class="sec"><h3>Assistant</h3>
+    <p class="note">Say <b>Moderator</b>, then ask anything: “who was David Hume?”, “why was that the answer?”, “switch to math”. Between questions a question needs no “Moderator”. It will not give away the answer to a question still in play.</p>
+    <p class="note">The answers come from Anthropic’s Claude, through an Anthropic account of your own: make an API key at <a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com</a> and paste it here. Anthropic bills that account for what is used. What you ask is sent to Anthropic together with the question being read and the last few questions and answers. <b>The key stays in this browser on this device and is sent only to Anthropic. Use a key made just for this, with a spending limit.</b></p>
+    <label class="field"><span>API key<small id="keyState"></small></span><input type="password" id="assistantKey" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="sk-ant-…"></label>
+    <div class="rowb"><button type="button" class="btn primary" data-act="key-save">Save key</button><button type="button" class="btn" data-act="assistant-test">Ask a test question</button><button type="button" class="btn danger" data-act="key-remove">Remove key</button></div>
+    ${sel('assistantModel', 'Model', ASSISTANT_MODELS.map(m => [m.id, `${m.label}: ${m.note}`]), 'Opus gives the best answers and is the slowest to start speaking; Haiku starts soonest and costs least. “Ask a test question” times the one chosen.')}
+    <p class="note" id="assistantTestOut" style="white-space:pre-line" hidden></p>
   </section>
   <section class="sec"><h3>Car, lock screen, other apps</h3>
     <p class="note">With CarPlay or Bluetooth the car shows Carbowl as a phone call: that is how it gets the car’s microphone. <b>The car’s call volume is separate from its music volume</b>: play the test tone and turn the volume knob up while it sounds. Carbowl keeps going with the phone locked or another app in front as long as it runs in a Safari tab${STANDALONE ? ' — <b>it is running as a Home Screen app now, which iOS cuts off from the microphone in the background: open it in Safari instead</b>' : ''}.</p>
@@ -650,6 +701,7 @@ function buildSettings () {
   <section class="sec"><h3>Help</h3>
     <p class="note">While a tossup is read, say <b>buzz</b>, wait for the beep, then answer. The reader stops as soon as it hears you. Two falling notes mean “say that again?”. Said buzz by mistake? <b>Never mind</b>. For a bonus, just say the answer during or after each part.</p>
     <p class="note">Any time: <b>repeat the question</b>, <b>what were the earlier clues</b>, <b>go back</b> (the last sentence), <b>skip question</b>, <b>pause quiz</b>, <b>resume</b>, <b>read faster</b> / <b>slower</b>, <b>volume up</b> / <b>down</b>. Also: <b>what was the answer</b>, <b>spell that</b>, <b>what’s my score</b>, <b>what set is this from</b>, <b>what can I say</b>. Right after a verdict: <b>I was right</b> or <b>I was wrong</b>. The big button always works as a buzzer.</p>
+    <p class="note">With an assistant key saved: <b>Moderator</b>, then any question or request in your own words. While it is answering, <b>thanks</b> or <b>stop</b> cuts it short, and it waits a few seconds afterwards for a follow-up.</p>
   </section>
   <section class="sec"><h3>Troubleshooting</h3>
     <div class="rowb"><button type="button" class="btn" data-act="copy-log">Copy log</button><button type="button" class="btn" data-act="show-log">Show log</button><button type="button" class="btn danger" data-act="clear-models">Delete downloaded models</button></div>
@@ -657,7 +709,41 @@ function buildSettings () {
     <pre class="log" id="logView" hidden></pre>
     <p class="note">Carbowl ${VERSION}. Questions and answer checking from <a href="https://www.qbreader.org" target="_blank" rel="noopener">QBReader</a>. Speech runs on this device with sherpa-onnx, Moonshine, Silero VAD and Supertonic or Piper voices.</p>
   </section>`;
-  fillMics(); renderDiag();
+  fillMics(); renderDiag(); renderKey();
+}
+/** Says whether a key is saved, showing only its last four characters. */
+function renderKey () {
+  const el = $('keyState'); if (!el) return;
+  const k = assistantKey.get();
+  el.textContent = k ? `A key is saved on this device (ends in ${k.slice(-4)}).` : 'No key saved: only the built-in requests work.';
+}
+/** Puts one fixed question to the chosen model and shows how long the answer took to start and to finish. */
+async function assistantTest () {
+  const out = $('assistantTestOut'); if (!out) return;
+  out.hidden = false;
+  if (!assistant.available()) { out.textContent = 'Save a key first.'; return; }
+  if (assistantTest.running) return;
+  assistantTest.running = true;
+  const model = ASSISTANT_MODELS.find(m => m.id === settings.assistantModel) || ASSISTANT_MODELS[0];
+  out.textContent = `Asking ${model.label}…`;
+  let voice = null;
+  try {
+    // Spoken as well when no quiz is running, so that the voice saying it can be judged too.
+    if (phase === 'ready' && narrator) { try { await openAudio({ mic: false }); voice = narrator.speakStream({ group: narrator.newGroup('at') }); } catch (e) { voice = null; } }
+    const said = []; const t0 = performance.now(); let first = 0;
+    await assistant.ask({
+      text: 'In one sentence, who was David Hume?', talk: [],
+      context: { state: 'idle', score: {}, asked: 0, earlier: [] },
+      say: s => { if (!first) first = performance.now() - t0; said.push(s); if (voice) voice.push(s); }
+    });
+    const total = performance.now() - t0; const l = assistant.last || {};
+    const sec = ms => (ms / 1000).toFixed(1) + ' s';
+    out.textContent = `${model.label}: first text after ${l.firstMs == null ? '?' : sec(l.firstMs)}, first whole sentence after ${sec(first)}, finished after ${sec(total)} (${l.inputTokens} tokens in, ${l.outputTokens} out).\n“${said.join(' ')}”`;
+    log(`assistant test: ${model.id}, first sentence after ${Math.round(first)} ms, finished after ${Math.round(total)} ms`);
+  } catch (e) {
+    out.textContent = `It did not work. ${e.spoken || ''}\n(${e.message || e})`;
+    log('assistant test failed: ' + (e.message || e));
+  } finally { if (voice) voice.end(); assistantTest.running = false; }
 }
 async function fillMics () {
   const s = $('s-micId'); if (!s) return;
@@ -773,7 +859,18 @@ async function settingsAction (name) {
   } else if (name === 'show-log') { const pre = $('logView'); pre.hidden = !pre.hidden; if (!pre.hidden) { pre.textContent = logLines.slice(-120).join('\n'); pre.scrollTop = pre.scrollHeight; } } else if (name === 'clear-models') {
     if (phase === 'running') { toast('End the session first.'); return; }
     await clearModelCache(); toast('Downloaded models deleted'); if (tts) tts.terminate(); if (listener) listener.terminate(); tts = null; listener = null; narrator = null; $('settings').close(); await checkSetup();
-  } else if (name === 'car-check') carCheck();
+  } else if (name === 'key-save') {
+    const el = $('assistantKey'); const v = el.value.trim();
+    if (!v) { toast('Paste the key into the box first.'); return; }
+    assistantKey.set(v); el.value = '';
+    renderKey(); assistant.warm();
+    toast('Key saved on this device');
+  } else if (name === 'key-remove') {
+    assistantKey.clear(); $('assistantKey').value = '';
+    renderKey(); $('assistantTestOut').hidden = true;
+    toast('Key removed from this device');
+  } else if (name === 'assistant-test') await assistantTest();
+  else if (name === 'car-check') carCheck();
   else if (name === 'copy-check') await copyText(carCheck.report || '', 'Report copied: paste it to Claude', 'checkView');
 }
 
@@ -1071,6 +1168,60 @@ if (TEST) {
       R.ok = R.tossup.result === 'power' && R.bonus.parts[0].result === 'correct' && R.bonus.parts[1].result === 'wrong' && R.bonus.parts[2].result === 'none' && !R.steps.some(s => /TIMED OUT/.test(s));
     } catch (e) { R.error = String(e && e.stack || e); }
     R.log = logLines.filter(l => /heard|judge|buzz at|ignored|reveal|failed|error|skipp|unhandled/i.test(l)).slice(-30);
+    R.done = true;
+    return R;
+  };
+
+  // The assistant, end to end: during a tossup a synthetic voice says "Moderator, who was David Hume?"
+  // into the scripted microphone. The words are recognised, put to the model through Anthropic's SDK
+  // (to the stand-in API of tools/mock-anthropic.mjs when the address carries ?api=...), the reply is
+  // spoken as it streams in, and the reading carries on. Then a request in free words ("I give up,
+  // skip this one please") is turned into an action by the model and carried out.
+  window.carbowlAssistantTest = async function ({ volume = 0.02 } = {}) {
+    const R = { steps: [], ok: false, done: false }; window.carbowlAssistantTestResult = R;
+    const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+    const until = async (what, pred, ms) => { const t = performance.now(); while (performance.now() - t < ms) { if (pred()) { R.steps.push(what + ' ok after ' + Math.round(performance.now() - t) + ' ms'); return true; } await sleep(30); } R.steps.push(what + ' TIMED OUT in state ' + app.dataset.state); return false; };
+    try {
+      await until('engines ready', () => phase === 'ready' || phase === 'running', 60000);
+      if (!assistant.available()) throw new Error('no assistant key is saved');
+      R.api = assistant.baseURL || 'api.anthropic.com'; R.model = settings.assistantModel;
+      feed.next = async () => ({ ...CANNED.tossup });
+      sessionHistory.length = 0;
+      const saved = { ...settings.rules }; Object.assign(settings.rules, { mode: 'tossups', betweenSec: 1, tossupDeadSec: 4, followUpSec: 1.5 });
+      const clip = async (text, sid) => {
+        let c = null;
+        for (let attempt = 0; attempt < 4; attempt++) { c = await tts.speak(text, { sid, speed: 1, steps: 5 + 2 * attempt, priority: 0 }).promise; if (await soundsRight(text, c)) break; R.steps.push(`re-made the clip "${text}" (attempt ${attempt + 1} was unclear)`); }
+        const s = await to16k(c); for (let i = 0; i < s.length; i++) s[i] *= 0.5; return s;
+      };
+      const clips = { ask: await clip('Moderator, who was David Hume?', 7), skip: await clip('Moderator, I give up, skip this one please.', 5) };
+      R.steps.push('user clips prepared');
+      const spoken = []; const shown = onAssistant;
+      if (phase === 'ready') await start();
+      audio.setVolume(volume);
+      const g = game;
+      g.ui.onAssistant = (who, text) => { spoken.push(`${who}: ${text}`); shown(who, text); };
+      const answered = () => logLines.filter(l => /assistant answered in/.test(l));
+      await until('tossup is being read', () => g.current && g.current.id === 'selftest-tossup' && app.dataset.state === 'reading' && g.reading && g.reading.timeline.length > 0, 60000);
+      await sleep(3000);
+      fakeMic.say(clips.ask.slice());
+      await until('the question reached the assistant', () => app.dataset.state === 'assistant', 20000);
+      await until('the reply was spoken', () => answered().length >= 1, 40000);
+      await until('the reading carried on', () => app.dataset.state === 'reading' && g.reading && g.reading.state === 'reading', 20000);
+      const at = g.reading ? g.reading.position() : 0;
+      await sleep(1500);
+      R.readOn = !!g.reading && g.reading.position() > at;
+      fakeMic.say(clips.skip.slice());
+      await until('the model was asked a second time', () => answered().length >= 2, 40000);
+      await until('the question was skipped', () => g.history.some(h => h.result === 'skipped'), 20000);
+      await sleep(500);
+      g.stop();
+      Object.assign(settings.rules, saved);
+      R.spoken = spoken;
+      R.timings = answered().map(l => l.replace(/^\s*[\d.]+\s+/, '').slice(0, 160));
+      R.requests = logLines.filter(l => /^\s*[\d.]+\s+assistant: /.test(l)).map(l => l.replace(/^\s*[\d.]+\s+/, ''));
+      R.ok = spoken.some(s => /^assistant: .*Hume/.test(s)) && R.readOn && g.history.some(h => h.result === 'skipped') && !R.steps.some(s => /TIMED OUT/.test(s));
+    } catch (e) { R.error = String(e && e.stack || e); }
+    R.log = logLines.filter(l => /heard|assistant|failed|error|skipp|unhandled/i.test(l)).slice(-30);
     R.done = true;
     return R;
   };

@@ -40,9 +40,10 @@ export const PHRASES = {
   cancelled: 'Okay, carrying on.',
   noPrevious: 'There is no earlier answer yet.',
   notYet: 'That would be telling. Say skip if you want the answer.',
-  needKey: 'I can only answer the built-in requests so far. Say: what can I say.',
+  needKey: 'I need an assistant key for that. Add one in Settings. Until then, say: what can I say.',
   assistantTrouble: 'I could not reach the assistant.',
-  help: 'You can say: buzz. Repeat the question. What were the earlier clues. Go back. What was the answer. Spell that. What is my score. Never mind. Skip. Pause the quiz. Read faster, or read slower.'
+  help: 'You can say: buzz. Repeat the question. What were the earlier clues. Go back. What was the answer. Spell that. What is my score. Never mind. Skip. Pause the quiz. Read faster, or read slower.',
+  helpAsk: 'You can also say: Moderator, and then ask me anything.'
 };
 
 export const DEFAULT_RULES = {
@@ -65,6 +66,8 @@ export const DEFAULT_RULES = {
   confirmSec: 2,                // after a sound that could not be made out, how long to wait for it to be said again
   assistant: true,              // spoken requests: built-in ones, and "Moderator, ..." for anything else
   followUpSec: 4.5,             // after the assistant answers, how long it waits for a follow-up question
+  thinkingToneSec: 2.5,         // while the assistant's answer is awaited, a soft tone this often says it is being worked on
+  askMoreSec: 0.6,              // after "Moderator, ..." heard while reading, how long to wait in case the sentence goes on after a pause
   selfJudge: false,             // no microphone: the answer is revealed and the player taps right or wrong
   selfJudgeSec: 12,
   bonusPointsSpoken: true
@@ -283,6 +286,8 @@ export class Game {
           if (!command && !plain && this.rules().assistant) {
             const ask = this._askFor(text, free);
             if (ask) {
+              ask.end = e.end; // where these words ended: the rest of the sentence, if any, is listened for from there
+              ask.whole = /\?["')\]]*\s*$/.test(text); // heard as a finished question: less reason to wait for more
               const t0 = now();
               if (onPause) onPause();
               let action = await this._assist(ask);
@@ -408,11 +413,12 @@ export class Game {
 
   /**
    * Listens for a spoken answer (or, for the assistant, a spoken question).
-   * @param {{ prefix?: string, since?: number, startSec?: number, maxSec?: number, alreadySpeaking?: boolean, state?: string }} o
-   *   prefix: words already heard in the same breath as the buzz
+   * @param {{ prefix?: string, since?: number, startSec?: number, maxSec?: number, moreSec?: number, alreadySpeaking?: boolean, state?: string }} o
+   *   prefix: words already heard in the same breath as the buzz; moreSec: how long to wait for more of them
+   *   since: listen from this moment on (audio clock), so that speech already under way is heard from its start
    * @returns {Promise<{ text: string, timedOut: boolean, cancelled?: boolean }>}
    */
-  async _collectAnswer ({ prefix = '', since, startSec, maxSec, alreadySpeaking = false, state = 'answering' } = {}) {
+  async _collectAnswer ({ prefix = '', since, startSec, maxSec, moreSec, alreadySpeaking = false, state = 'answering' } = {}) {
     const r = this.rules();
     const asking = state !== 'answering';
     this._set(state);
@@ -420,7 +426,7 @@ export class Game {
     const t0 = now();
     const hard = { at: t0 + (maxSec || r.answerMaxSec) * 1000 };
     // With words already in hand, wait only briefly for more; otherwise give the full thinking time.
-    let soft = { at: t0 + (prefix ? 1200 : (startSec || r.answerStartSec) * 1000) };
+    let soft = { at: t0 + (prefix ? (moreSec || 1.2) * 1000 : (startSec || r.answerStartSec) * 1000) };
     const parts = prefix ? [prefix] : [];
     let speaking = alreadySpeaking; let cancelled = false;
     for (;;) {
@@ -525,7 +531,7 @@ export class Game {
 
   /** What the built-in requests are answered with. */
   _localReply (name) {
-    if (name === 'help') return [PHRASES.help];
+    if (name === 'help') return this.assistant && this.assistant.available && this.assistant.available() ? [PHRASES.help, PHRASES.helpAsk] : [PHRASES.help];
     if (name === 'score') {
       const s = this.score();
       if (!s.tossups && !s.bonuses) return ['No score yet.'];
@@ -591,8 +597,11 @@ export class Game {
     this._listen('spot');
     let finished = false; let result = {};
     const spoken = [];
+    // Whoever is producing the reply (a request to a model, say) is told when nobody is listening any more.
+    const ac = typeof AbortController === 'function' ? new AbortController() : null;
+    const cut = () => { finished = true; if (ac) ac.abort(); sp.stop(); };
     const work = (async () => {
-      try { result = (await produce(t => { if (t && !finished) { spoken.push(t); this._emit('onAssistant', 'assistant', t); sp.push(t); } })) || {}; } catch (e) { result = { error: e }; }
+      try { result = (await produce(t => { if (t && !finished) { spoken.push(t); this._emit('onAssistant', 'assistant', t); sp.push(t); } }, ac ? ac.signal : undefined)) || {}; } catch (e) { result = { error: e }; }
       sp.end();
       const how = await (sp.finish ? sp.finish() : sp.done);
       this.box.post({ type: 'said', sp, how });
@@ -600,16 +609,16 @@ export class Game {
     let out = { how: 'ended' };
     for (;;) {
       const e = await this.box.next();
-      if (e.type === 'stop' || this.stopping) { finished = true; sp.stop(); await work.catch(() => {}); throw new StopSignal(); }
+      if (e.type === 'stop' || this.stopping) { cut(); await work.catch(() => {}); throw new StopSignal(); }
       if (e.type === 'said' && e.sp === sp) { out = { how: e.how }; break; }
-      if (e.type === 'tap' && e.action !== 'pause') { finished = true; sp.stop(); out = { how: 'stopped' }; await work.catch(() => {}); break; }
+      if (e.type === 'tap' && e.action !== 'pause') { cut(); out = { how: 'stopped' }; await work.catch(() => {}); break; }
       if (e.type !== 'utterance') continue;
       const text = String(e.text || '').trim();
       if (!text || isEcho(text, spoken.join(' '))) continue;
       this.log(`heard (assistant speaking): "${text}"`);
       const w = splitWake(text);
       if (w.wake || classifyCommand(text, ['enough', 'resume', 'skip'])) {
-        finished = true; sp.stop(); await work.catch(() => {});
+        cut(); await work.catch(() => {});
         out = { how: 'stopped', next: w.wake ? w.rest : '', skip: !!classifyCommand(text, ['skip']) };
         break;
       }
@@ -621,6 +630,9 @@ export class Game {
   /**
    * Handles a request to the assistant: stops the reader, answers (from what the game knows, or by
    * asking the assistant's model), allows follow-up questions, then puts things back as they were.
+   * The assistant may answer with an action: 'repeat' | 'clues' | 'back' | 'skip' | 'pause' (left to the caller),
+   * 'mark_right' | 'mark_wrong' (the last verdict is overruled here), 'faster' | 'slower' | 'louder' | 'quieter'
+   * (passed on to the app).
    * @returns {Promise<string|null>} something for the caller to do: 'repeat' | 'clues' | 'back' | 'skip' | 'pause' | null
    */
   async _assist (ask) {
@@ -636,11 +648,17 @@ export class Game {
     let action = null;
     try {
       let kind = ask.kind; let text = ask.text || ''; let name = ask.name;
+      // While a question is read, a pause of a third of a second ends an utterance (so that "buzz" is
+      // caught quickly). After "Moderator," or in the middle of a sentence that is too soon: the words
+      // so far may be only the beginning, and the rest is listened for from the moment they ended.
+      let since = modeBefore === 'spot' && typeof ask.end === 'number' ? ask.end : undefined;
       for (let turn = 0; turn < 6; turn++) {
-        if (kind === 'ask' && !text) {
-          // Only the wake word so far: listen for the question itself.
-          this._tone('listen');
-          const heard = await this._collectAnswer({ startSec: 6, maxSec: 14, state: 'asking' });
+        if (kind === 'ask' && (!text || since !== undefined)) {
+          // Only the wake word so far (listen for the question itself), or words that may go on.
+          const goingOn = this.box.q.some(x => x.type === 'speechstart' || x.type === 'utterance');
+          if (!text && !goingOn) this._tone('listen');
+          const heard = await this._collectAnswer({ prefix: text, since, moreSec: ask.whole ? Math.min(0.25, r.askMoreSec) : r.askMoreSec, startSec: 6, maxSec: 14, state: 'asking' });
+          since = undefined;
           this._set('assistant');
           text = heard.text;
           if (!text || heard.cancelled || classifyCommand(text, ['enough', 'resume', 'cancel'])) break;
@@ -663,12 +681,18 @@ export class Game {
           this.log('assistant asked: ' + text);
           this._tone('think');
           const t0 = now(); let first = 0; const said = [];
-          reply = await this._sayReply(async say => {
-            const res = await a.ask({ text, context: this._context(), talk: this.talk.slice(0, -1), say: s => { if (!first) first = now() - t0; said.push(s); say(s); } });
-            return res || {};
-          });
+          // Until the first words come, the same soft tone every few seconds says the question is being worked on.
+          let waiting = null;
+          const remind = () => { waiting = setTimer(() => { if (!first && !this.stopping) { this._tone('think'); remind(); } }, Math.max(0.02, r.thinkingToneSec) * 1000); };
+          remind();
+          try {
+            reply = await this._sayReply(async (say, signal) => {
+              const res = await a.ask({ text, context: this._context(), talk: this.talk.slice(0, -1), signal, say: s => { if (!first) first = now() - t0; said.push(s); say(s); } });
+              return res || {};
+            });
+          } finally { first = first || -1; if (waiting) clearTimer(waiting); }
           if (reply.error) { this.log('assistant failed: ' + (reply.error.message || reply.error)); await this._sayReply(async say => { say(reply.error.spoken || PHRASES.assistantTrouble); return {}; }); break; }
-          this.log(`assistant answered in ${Math.round(now() - t0)} ms (first words after ${Math.round(first)} ms): ${said.join(' ').slice(0, 200)}`);
+          this.log(`assistant answered in ${Math.round(now() - t0)} ms (${first > 0 ? `first words after ${Math.round(first)} ms` : 'no words'}${reply.action ? ', asked for: ' + reply.action : ''}): ${said.join(' ').slice(0, 200)}`);
           this.talk.push({ role: 'assistant', text: said.join(' ') });
           if (this.talk.length > 12) this.talk.splice(0, this.talk.length - 12);
           if (reply.action) action = reply.action;
@@ -703,6 +727,8 @@ export class Game {
       if (this.override(rec, action === 'mark_right')) await this._say(action === 'mark_right' ? PHRASES.markedRight : PHRASES.markedWrong);
       return null;
     }
+    // Speed and volume belong to the app's settings: passed on, as when they are asked for directly.
+    if (action === 'faster' || action === 'slower' || action === 'louder' || action === 'quieter') { this._emit('onCommand', action); return null; }
     return action;
   }
 

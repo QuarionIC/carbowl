@@ -14,12 +14,15 @@ Hands-free quizbowl practice for the car. Carbowl pulls tossups and bonuses from
   **"what set is this from"**, **"what can I say"**. The answer to a question still in play is
   never given.
 - Right after a verdict: **"I was right"** or **"I was wrong"** overrules the judge.
+- With an assistant key (below): **"Moderator, ..."** and then anything, in your own words: "who was
+  David Hume?", "why was that the answer?", "switch to math", "slow down a bit". Between questions a
+  question needs no "Moderator". **"Thanks"** or **"stop"** cuts an answer short.
 - The big button on screen always works as a buzzer.
 
-Everything except fetching questions runs on the device: the voice, the speech recognition and the
-answer judging. After the one-time model download the quiz keeps going through patches with no
-signal as long as questions are buffered. Every question asked is kept on the device (IndexedDB)
-for review across sessions, with what was said and the verdict.
+Everything except fetching questions (and the assistant, when you use it) runs on the device: the
+voice, the speech recognition and the answer judging. After the one-time model download the quiz
+keeps going through patches with no signal as long as questions are buffered. Every question asked
+is kept on the device (IndexedDB) for review across sessions, with what was said and the verdict.
 
 ## Using it
 
@@ -36,6 +39,17 @@ Screen app: in a tab it keeps going with the phone locked or another app in fron
 app loses the microphone in the background. Settings > Car > **Run the car check** is a two-minute
 guided test that reports what the phone and the car actually did.
 
+**The assistant.** Open questions are answered by Anthropic's Claude, called straight from the page
+with your own Anthropic API key (Settings > Assistant; make a key at console.anthropic.com). The key
+is kept in the browser's storage on that device, apart from the other settings, is never written to
+the log, and is sent only to api.anthropic.com. Use a key made just for this, with a spending
+limit: a key held in a browser can be read by anyone with the unlocked device, and by any other
+page published under the same GitHub Pages account (they share one origin). What you ask is sent to
+Anthropic together with the state of the quiz: the question in play as far as it has been read (its
+answer and the part not yet read stay on the device), the last few questions with their answers
+and yours, and the score. Three models are on offer; Settings > Assistant > "Ask a test question"
+times the chosen one with your key. Without a key everything else works as before.
+
 ## How it works
 
 | Part | What it does |
@@ -50,6 +64,7 @@ guided test that reports what the phone and the car actually did.
 | `docs/js/judge.js` | Answer judging: QBReader's own checker plus a sound-alike comparison for names heard "by ear" |
 | `docs/js/game.js` | The quiz itself: tossup and bonus flow, prompts, scoring, pause/skip/override, spoken requests |
 | `docs/js/audio.js` | One audio context for playing and capturing; keeps itself running across route changes |
+| `docs/js/assistant.js` | The assistant: what the model is told, the request per model, replies streamed into sentences for the voice, the things it may ask the quiz to do |
 | `docs/js/history.js` | Everything asked, kept across sessions |
 | `docs/js/numbers.js` | Spoken numbers ("twenty four") against written ones ("24") when judging |
 | `docs/js/clock.js` | Timers that keep time while the page is in the background |
@@ -75,9 +90,24 @@ node tools/serve.mjs --port 8391  # serve docs/ locally
 Open `http://localhost:8391/?test` and run `carbowlSelfTest()` in the console for an end-to-end
 run with a scripted microphone (synthetic voices speak the buzz and the answers).
 
+The assistant can be tried without a key against a stand-in for Anthropic's API, which speaks the
+documented streaming format and applies the documented request rules of the three models:
+
+```bash
+node tools/mock-anthropic.mjs --port 8392
+```
+
+Then open `http://localhost:8391/?test&api=http://127.0.0.1:8392`, save any text as the key, and run
+`carbowlAssistantTest()`. The `api` parameter only works when the page itself is served from this
+computer and only for an address on this computer; the published site ignores it. The stand-in
+shows that requests are well formed and replies are handled; what a real model says, and how fast,
+it cannot show.
+
 `tools/build-site.mjs` assembles the third-party runtime and models from `downloads/` into `docs/`
-(see the script header for where each file comes from). `tools/exp/` holds the measurement scripts
-used to choose the voice, the recogniser and the thresholds.
+(see the script header for where each file comes from). `tools/build-vendor.mjs` bundles Anthropic's
+SDK from `node_modules` into `docs/vendor/anthropic-sdk.js` (run `npm install` first; only needed
+when the SDK version changes, the bundle is committed). The tests need no `npm install`. `tools/exp/`
+holds the measurement scripts used to choose the voice, the recogniser and the thresholds.
 
 ## What was measured, and how
 
@@ -95,6 +125,11 @@ from a person in a car. They guided the design; they are not a promise.
   (QBReader's checker alone: 65%), 82% with noise; 1 of 60 wrong answers accepted (a legitimate
   overlap).
 - Speech generation runs at about four times real time in desktop Chrome.
+- The assistant has been run only against the stand-in API (in Node and in desktop Chromium, where a
+  spoken "Moderator, who was David Hume?" was recognised, answered aloud and the reading resumed),
+  plus one request to the real API with a made-up key to confirm that a browser on the published
+  site reaches it and is turned away properly. No real model has answered through it yet, so the
+  quality and speed of its answers are unmeasured.
 
 ## Credits and licences
 

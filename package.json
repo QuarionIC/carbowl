@@ -1,10 +1,15 @@
 {
   "name": "carbowl",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "Hands-free quizbowl practice for the car: reads QBReader tossups and bonuses aloud and listens for spoken buzzes and answers.",
   "scripts": {
-    "test": "node --test test/"
+    "test": "node --test test/",
+    "build:vendor": "node tools/build-vendor.mjs"
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "1.9.0",
+    "esbuild": "0.28.2"
   }
 }

@@ -14,7 +14,7 @@ async function head (rel) {
   return { status: res.status, type: res.headers.get('content-type') || '', length: Number(res.headers.get('content-length') || -1) };
 }
 
-for (const [rel, type] of [['', 'text/html'], ['app.css', 'text/css'], ['sw.js', 'javascript'], ['js/app.js', 'javascript'], ['js/game.js', 'javascript'], ['js/workers/tts-worker.js', 'javascript'], ['js/workers/listen-worker.js', 'javascript'], ['js/workers/capture-worklet.js', 'javascript'], ['js/workers/common.js', 'javascript'], ['vendor/qb-answer-checker.js', 'javascript'], ['vendor/sherpa/sherpa-onnx-wasm-web.js', 'javascript'], ['vendor/sherpa/sherpa-onnx-wasm-web.wasm', 'application/wasm']]) {
+for (const [rel, type] of [['', 'text/html'], ['app.css', 'text/css'], ['sw.js', 'javascript'], ['js/app.js', 'javascript'], ['js/game.js', 'javascript'], ['js/assistant.js', 'javascript'], ['vendor/anthropic-sdk.js', 'javascript'],['js/workers/tts-worker.js', 'javascript'], ['js/workers/listen-worker.js', 'javascript'], ['js/workers/capture-worklet.js', 'javascript'], ['js/workers/common.js', 'javascript'], ['vendor/qb-answer-checker.js', 'javascript'], ['vendor/sherpa/sherpa-onnx-wasm-web.js', 'javascript'], ['vendor/sherpa/sherpa-onnx-wasm-web.wasm', 'application/wasm']]) {
   const h = await head(rel);
   if (h.status !== 200) fail(`${rel || 'index'}: HTTP ${h.status}`); else if (!h.type.includes(type)) fail(`${rel || 'index'}: content type ${h.type}, expected ${type}`);
 }

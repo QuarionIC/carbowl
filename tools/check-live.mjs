@@ -46,4 +46,34 @@ for (const [name, bundle] of Object.entries(manifest.bundles)) {
   }
 }
 console.log(`${base}: ${files} model/runtime files, ${(bytes / 1048576).toFixed(1)} MB, ${hash ? 'sizes and contents' : 'sizes'} checked; problems: ${bad}`);
+
+// The app's own files against the published list (version.json): each must be served byte for byte
+// as listed, or copies of the app on people's devices will refuse to update to it.
+const before = bad;
+let listed = 0; let published = '';
+try {
+  const res = await fetch(base + 'version.json', { cache: 'no-store' });
+  if (res.status !== 200) fail(`version.json: HTTP ${res.status}`);
+  else {
+    const info = await res.json();
+    published = info.version;
+    const app = await (await fetch(base + 'js/app.js', { cache: 'no-store' })).text();
+    const running = (app.match(/const VERSION = '([^']+)'/) || [])[1];
+    if (running !== info.version) fail(`version.json says ${info.version} but js/app.js is ${running}`);
+    for (const [file, want] of Object.entries(info.files || {})) {
+      listed++;
+      const r = await fetch(base + file, { cache: 'no-store' });
+      if (r.status !== 200) { fail(`${file}: HTTP ${r.status}`); continue; }
+      const got = crypto.createHash('sha256').update(Buffer.from(await r.arrayBuffer())).digest('hex');
+      if (got !== want) fail(`${file}: served content does not match version.json`);
+    }
+    // The page as people open it (the address without "index.html") must be that same page.
+    if (info.files && info.files['index.html']) {
+      const r = await fetch(base, { cache: 'no-store' });
+      const got = crypto.createHash('sha256').update(Buffer.from(await r.arrayBuffer())).digest('hex');
+      if (got !== info.files['index.html']) fail('the page at the site address does not match version.json');
+    }
+  }
+} catch (e) { fail('version.json: ' + e.message); }
+console.log(`${base}: version ${published || '?'}, ${listed} app files checked against version.json; problems: ${bad - before}`);
 process.exit(bad ? 1 : 0);

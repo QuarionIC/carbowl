@@ -39,6 +39,13 @@ Screen app: in a tab it keeps going with the phone locked or another app in fron
 app loses the microphone in the background. Settings > Car > **Run the car check** is a two-minute
 guided test that reports what the phone and the car actually did.
 
+**Which version am I on?** The small number beside the title is the version running in that page.
+A page that stays open goes on running the code it was loaded with, so Carbowl looks for a newer
+version by itself (when it starts, when it comes back into view, and every quarter of an hour),
+fetches it as a complete, checksum-verified set, and reloads into it at a moment when nothing is
+going on: never during a quiz. Settings > Troubleshooting > "Check for updates" does it on demand.
+A page showing no number at all is older than 0.3.1 and has to be reloaded by hand once.
+
 **The assistant.** Open questions are answered by Anthropic's Claude, called straight from the page
 with your own Anthropic API key (Settings > Assistant; make a key at console.anthropic.com). The key
 is kept in the browser's storage on that device, apart from the other settings, is never written to
@@ -65,6 +72,7 @@ times the chosen one with your key. Without a key everything else works as befor
 | `docs/js/game.js` | The quiz itself: tossup and bonus flow, prompts, scoring, pause/skip/override, spoken requests |
 | `docs/js/audio.js` | One audio context for playing and capturing; keeps itself running across route changes |
 | `docs/js/assistant.js` | The assistant: what the model is told, the request per model, replies streamed into sentences for the voice, the things it may ask the quiz to do |
+| `docs/js/update.js` | Notices a newer published version (or a half-updated copy), fetches it as a verified set and reloads when idle |
 | `docs/js/history.js` | Everything asked, kept across sessions |
 | `docs/js/numbers.js` | Spoken numbers ("twenty four") against written ones ("24") when judging |
 | `docs/js/clock.js` | Timers that keep time while the page is in the background |
@@ -102,6 +110,12 @@ Then open `http://localhost:8391/?test&api=http://127.0.0.1:8392`, save any text
 computer and only for an address on this computer; the published site ignores it. The stand-in
 shows that requests are well formed and replies are handled; what a real model says, and how fast,
 it cannot show.
+
+**Releasing.** Change `VERSION` in `docs/js/app.js` (and `version` in `package.json`), then run
+`node tools/stamp-version.mjs`: it writes `docs/version.json`, the version plus a SHA-256 checksum
+of every file of the app. Copies of the app on people's devices compare themselves with that list,
+so it has to be re-stamped after the last change to anything under `docs/`; a test fails when it is
+stale, and `node tools/check-live.mjs` compares the published files with it after a push.
 
 `tools/build-site.mjs` assembles the third-party runtime and models from `downloads/` into `docs/`
 (see the script header for where each file comes from). `tools/build-vendor.mjs` bundles Anthropic's

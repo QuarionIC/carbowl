@@ -13,8 +13,10 @@ import { HistoryStore, expandRecord, groupSessions, resumableSession, scoreOf, m
 import { classifyBuzz, isEcho } from './intent.js';
 import { sleep, setTimer, usingWorkerClock } from './clock.js';
 import { Assistant, ASSISTANT_MODELS, DEFAULT_ASSISTANT_MODEL } from './assistant.js';
+import { Updater } from './update.js';
 
-const VERSION = '0.3.0';
+// Also read by tools/stamp-version.mjs, which writes it into version.json: run that tool after changing it.
+const VERSION = '0.3.1';
 // ?test in the address swaps the microphone for a scripted one, so the whole loop can be exercised without sound hardware.
 const TEST = new URLSearchParams(location.search).has('test');
 const BASE = new URL('.', document.baseURI).href;
@@ -26,6 +28,12 @@ const LS = {
   get (k, d) { try { const v = localStorage.getItem('cb.' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
   set (k, v) { try { localStorage.setItem('cb.' + k, JSON.stringify(v)); } catch (e) { /* storage full or blocked */ } },
   del (k) { try { localStorage.removeItem('cb.' + k); } catch (e) { /* ignore */ } }
+};
+// The same, kept for this tab only (gone when the tab is closed).
+const SS = {
+  get (k, d) { try { const v = sessionStorage.getItem('cb.' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set (k, v) { try { sessionStorage.setItem('cb.' + k, JSON.stringify(v)); } catch (e) { /* blocked */ } },
+  del (k) { try { sessionStorage.removeItem('cb.' + k); } catch (e) { /* ignore */ } }
 };
 
 // Reading speed is a multiple of the voice's natural pace. Earlier versions defaulted to 1.1 and
@@ -110,10 +118,19 @@ const voiceParams = () => ({ sid: settings.sid, speed: settings.speed, steps: se
 const judge = (answerline, transcripts, previous) => judgeAnswer({ answerline, transcripts, previous, checkAnswer, threshold: settings.leniency });
 
 async function boot () {
+  // The version is on screen all the time, so that a look (or a screenshot) says which copy is running.
+  if ($('ver')) $('ver').textContent = VERSION;
   log(`Carbowl ${VERSION}; ${navigator.userAgent}${STANDALONE ? '; opened as a Home Screen app' : ''}`);
   await restoreHistory();
   buildSettings(); renderScore(); renderMain(); renderSpeed(); renderTopics();
   if ('serviceWorker' in navigator && !TEST) navigator.serviceWorker.register('sw.js').catch(e => log('offline support not installed: ' + e.message));
+  // A newer version, when one is published, replaces this one before the speech models are loaded
+  // (so that they are loaded once, not twice). Only a moment is spent waiting to hear of one; fetching
+  // it, once it is known to exist, is given longer.
+  const first = updater.check('start');
+  let early = await Promise.race([first, sleep(2000).then(() => 'slow')]);
+  if (early === 'slow' && updater.state === 'checking') { $('status').textContent = `Updating to ${updater.latest}…`; early = await Promise.race([first, sleep(25000).then(() => 'slow')]); }
+  if (early === 'reloading') return;
   try { manifest = await loadManifest(BASE); } catch (e) { return fail('Could not load the app files. Check the connection and reload.', e); }
   // Only offer voices and recognisers that this copy of the site actually ships.
   for (const k of Object.keys(VOICES)) if (!VOICES[k].bundles.every(b => manifest.bundles[b])) delete VOICES[k];
@@ -195,6 +212,7 @@ async function startEngines () {
   listener.addEventListener('crash', () => fail('Listening stopped unexpectedly. Reload the page.'));
   setPhase('ready'); $('status').textContent = 'Ready';
   preparePhrases();
+  updater.idle(); // an update that waited for the model download goes ahead
 }
 
 /** Pre-generates the fixed phrases and checks each one by ear (synthesise, transcribe, compare). */
@@ -321,7 +339,13 @@ async function start () {
   window.carbowl = { game, audio, narrator, listener, tts, feed, settings, log: logLines, fakeMic, speakAsUser, historyStore };
   autoPaused = false;
   setPhase('running');
-  game.run().then(() => { if (phase === 'running') { setPhase('ready'); $('status').textContent = 'Stopped'; } releaseWakeLock(); showMic(); renderTopics(); });
+  game.run().then(() => {
+    if (phase === 'running') { setPhase('ready'); $('status').textContent = 'Stopped'; }
+    releaseWakeLock(); showMic(); renderTopics();
+    // The session is over: an update that was held back goes ahead, and a long session ends with a look for one.
+    updater.idle();
+    if (Date.now() - updater.lastCheck > 5 * 60000) updater.check('session ended');
+  });
 }
 
 /** Requests the quiz passes on because they concern the app's own settings. */
@@ -368,6 +392,29 @@ const assistant = new Assistant({
   log
 });
 if (assistant.baseURL) log('assistant: using the stand-in API at ' + assistant.baseURL + ' (development only)');
+
+// ---------- keeping up to date ----------
+// A page left open goes on running the code it was loaded with. This one asks which version is
+// published (at the start, whenever it comes back into view, and every quarter of an hour), fetches
+// a newer one as a checked, complete set, and reloads into it when nothing is going on: never in
+// the middle of a quiz, a download, a check, or while a panel is open. See update.js.
+let updateStuck = '';
+const updateBusy = () => phase === 'running' ? 'a quiz is running' : phase === 'downloading' ? 'the speech models are downloading' : ($('settings').open || $('review').open) ? 'a panel is open' : (carCheck.running || assistantTest.running) ? 'a check is running' : '';
+const updater = new Updater({
+  version: VERSION, base: BASE, page: location.origin + location.pathname, store: SS, log,
+  busy: updateBusy,
+  lazy: () => assistant._sdk ? [] : ['vendor/anthropic-sdk.js'],
+  reload: () => location.reload(),
+  onState: (state, d) => {
+    if (state === 'reloading') toast(`Updating to version ${d.latest}…`, 5000);
+    else if (state === 'updated') toast(`Updated to version ${VERSION}`, 4000);
+    const stuck = state === 'stuck' ? d.latest : (state === 'current' || state === 'updated' || state === 'reloading' ? '' : updateStuck);
+    if (stuck !== updateStuck) { updateStuck = stuck; renderTopics(); }
+  }
+});
+setInterval(() => { if (document.visibilityState === 'visible') updater.check('timer'); }, 15 * 60000);
+window.addEventListener('pageshow', e => { if (e.persisted) updater.check('page restored'); });
+window.addEventListener('online', () => updater.check('back online'));
 function onAssistant (who, text) {
   $('heard').innerHTML = who === 'user' ? `You asked: <b>${escapeHtml(text)}</b>` : `<b>${escapeHtml(text)}</b>`;
 }
@@ -383,6 +430,7 @@ function releaseWakeLock () { try { if (wakeLock) wakeLock.release(); } catch (e
 document.addEventListener('visibilitychange', () => {
   log('page ' + document.visibilityState);
   if (document.visibilityState === 'visible' && phase === 'running') { requestWakeLock(); audio.kick(); }
+  if (document.visibilityState === 'visible' && Date.now() - updater.lastCheck > 60000) updater.check('page shown');
 });
 
 // When sound or the microphone really is gone (a phone call, a route that vanished) the quiz waits,
@@ -452,6 +500,36 @@ function onState (state, extra = {}) {
   else if (STATUS[state] !== undefined && STATUS[state] !== '') $('status').textContent = STATUS[state];
   if (state === 'idle') { $('mic').classList.remove('speaking'); readingKey = ''; }
   renderMain();
+  syncStage();
+}
+
+// ---------- the question beside the answer ----------
+// The answer has a band of its own under the question, so it can never lie on top of the text. When
+// it appears, the question's band gets shorter; the text is then moved up by as much, so that what
+// was being read stays just above the answer instead of slipping out of sight. Where the text runs
+// on beyond its band the edge fades out: a line cut in half looks like text hiding behind the answer.
+const stageBody = $('stageBody');
+let stageBottom = 0; // scroll position plus height: the line of text at the band's lower edge
+function fadeEdges () {
+  const hidden = stageBody.scrollHeight - stageBody.clientHeight - stageBody.scrollTop;
+  // Only where a good part of a line is out of sight: a few stray pixels are not worth dimming a line for.
+  stageBody.classList.toggle('more-above', stageBody.scrollTop > 10);
+  stageBody.classList.toggle('more-below', hidden > 10);
+}
+function noteStage () { stageBottom = stageBody.scrollTop + stageBody.clientHeight; fadeEdges(); }
+function syncStage () {
+  const shown = $('answer').hidden ? '' : '1';
+  if (app.dataset.answer !== shown) app.dataset.answer = shown; // the big button makes room while an answer is on show (see app.css)
+  fadeEdges();
+}
+stageBody.addEventListener('scroll', noteStage, { passive: true });
+if (typeof ResizeObserver === 'function') {
+  new ResizeObserver(() => {
+    if (phase === 'running' && stageBottom) stageBody.scrollTop = Math.max(0, stageBottom - stageBody.clientHeight);
+    noteStage();
+  }).observe(stageBody);
+  // The text itself growing or re-flowing (more of it shown, a narrower window) changes what is out of sight.
+  new ResizeObserver(fadeEdges).observe($('qtext'));
 }
 
 function difficultyLabel (d) { const x = DIFFICULTIES.find(v => v.value === d); return x ? (x.dots ? '●'.repeat(x.dots) : x.short) : ''; }
@@ -469,6 +547,7 @@ function onQuestion (rec) {
   if (rec.type === 'tossup' && rec.powerOffset >= 0 && rec.text.length) { pm.hidden = false; pm.style.left = (100 * rec.powerOffset / rec.text.length).toFixed(1) + '%'; } else pm.hidden = true;
   renderText();
   $('stageBody').scrollTop = 0;
+  syncStage(); noteStage();
   renderMain();
 }
 function onPart (rec, i) { view.part = i; view.offset = 0; renderText(); }
@@ -502,6 +581,7 @@ function renderText () {
   const stage = $('stageBody');
   const spans = el.querySelectorAll('.unread'); const lastUnread = spans[spans.length - 1];
   if (lastUnread) { const r = lastUnread.getBoundingClientRect(); const s = stage.getBoundingClientRect(); if (r.top > s.bottom - 40) stage.scrollTop += r.top - s.bottom + 80; }
+  noteStage();
 }
 function onHeard (text, flag) {
   $('heard').innerHTML = !text ? '' : text === '…' ? 'Hearing you…' : text === '?' ? 'Say that again?' : `Heard: <b>${escapeHtml(text)}</b>${flag === 'ignored' ? ' (not a buzz)' : ''}`;
@@ -531,6 +611,7 @@ function onAnswer (rec, part) {
   $('answer').innerHTML = `<small>Answer</small><div class="main">${main}</div>${notes ? `<div class="alts">${notes}</div>` : ''}`;
   $('answer').hidden = false;
   $('stageFoot').scrollTop = 0;
+  syncStage(); // the question's band shrinks now; the observer above keeps its last line in view
 }
 function renderScore () {
   const s = game ? game.score() : scoreOf(sessionHistory);
@@ -704,10 +785,10 @@ function buildSettings () {
     <p class="note">With an assistant key saved: <b>Moderator</b>, then any question or request in your own words. While it is answering, <b>thanks</b> or <b>stop</b> cuts it short, and it waits a few seconds afterwards for a follow-up.</p>
   </section>
   <section class="sec"><h3>Troubleshooting</h3>
-    <div class="rowb"><button type="button" class="btn" data-act="copy-log">Copy log</button><button type="button" class="btn" data-act="show-log">Show log</button><button type="button" class="btn danger" data-act="clear-models">Delete downloaded models</button></div>
+    <div class="rowb"><button type="button" class="btn" data-act="copy-log">Copy log</button><button type="button" class="btn" data-act="show-log">Show log</button><button type="button" class="btn" data-act="check-update">Check for updates</button><button type="button" class="btn danger" data-act="clear-models">Delete downloaded models</button></div>
     <p class="note" id="diagInfo"></p>
     <pre class="log" id="logView" hidden></pre>
-    <p class="note">Carbowl ${VERSION}. Questions and answer checking from <a href="https://www.qbreader.org" target="_blank" rel="noopener">QBReader</a>. Speech runs on this device with sherpa-onnx, Moonshine, Silero VAD and Supertonic or Piper voices.</p>
+    <p class="note">Carbowl ${VERSION} (the number beside the title). It looks for a newer version by itself and loads it when no quiz is running. Questions and answer checking from <a href="https://www.qbreader.org" target="_blank" rel="noopener">QBReader</a>. Speech runs on this device with sherpa-onnx, Moonshine, Silero VAD and Supertonic or Piper voices.</p>
   </section>`;
   fillMics(); renderDiag(); renderKey();
 }
@@ -743,7 +824,7 @@ async function assistantTest () {
   } catch (e) {
     out.textContent = `It did not work. ${e.spoken || ''}\n(${e.message || e})`;
     log('assistant test failed: ' + (e.message || e));
-  } finally { if (voice) voice.end(); assistantTest.running = false; }
+  } finally { if (voice) voice.end(); assistantTest.running = false; updater.idle(); }
 }
 async function fillMics () {
   const s = $('s-micId'); if (!s) return;
@@ -768,9 +849,10 @@ function renderTopics () {
   const el = $('topics'); if (!el) return;
   const f = settings.filters;
   const extra = f.subs.filter(s => !QUICK_TOPICS.some(t => t.sub === s)).length;
-  el.innerHTML = `<h2>Topics</h2><div class="chips">${topicChips()}</div><p class="fine">${extra ? `Also on: ${extra} more ${extra === 1 ? 'subcategory' : 'subcategories'} chosen in Settings. ` : ''}Other categories, difficulty and years are in Settings.</p>${STANDALONE ? '<p class="warn">Opened from the Home Screen, Carbowl loses the microphone when the phone locks or another app is in front. For the car, open it in Safari.</p>' : ''}`;
+  el.innerHTML = `<h2>Topics</h2><div class="chips">${topicChips()}</div><p class="fine">${extra ? `Also on: ${extra} more ${extra === 1 ? 'subcategory' : 'subcategories'} chosen in Settings. ` : ''}Other categories, difficulty and years are in Settings.</p>${STANDALONE ? '<p class="warn">Opened from the Home Screen, Carbowl loses the microphone when the phone locks or another app is in front. For the car, open it in Safari.</p>' : ''}${updateStuck ? `<p class="warn">Version ${escapeHtml(updateStuck)} of Carbowl is published, but this device still shows ${VERSION}. <button type="button" class="btn" data-update="force">Update now</button></p>` : ''}`;
   el.hidden = phase !== 'ready';
 }
+$('topics').addEventListener('click', e => { if (e.target.closest('[data-update]')) { toast('Fetching the new version…', 6000); updater.force(); } });
 function toggleTopic (key, on) {
   const topic = QUICK_TOPICS.find(t => t.key === key); if (!topic) return false;
   const next = setTopic(settings.filters, topic, on);
@@ -859,6 +941,11 @@ async function settingsAction (name) {
   } else if (name === 'show-log') { const pre = $('logView'); pre.hidden = !pre.hidden; if (!pre.hidden) { pre.textContent = logLines.slice(-120).join('\n'); pre.scrollTop = pre.scrollHeight; } } else if (name === 'clear-models') {
     if (phase === 'running') { toast('End the session first.'); return; }
     await clearModelCache(); toast('Downloaded models deleted'); if (tts) tts.terminate(); if (listener) listener.terminate(); tts = null; listener = null; narrator = null; $('settings').close(); await checkSetup();
+  } else if (name === 'check-update') {
+    toast('Looking for a newer version…', 2500);
+    const r = await updater.check('asked for in Settings');
+    const said = { current: `This is the latest version (${VERSION}).`, updated: `This is the latest version (${VERSION}).`, offline: 'The site could not be reached. Try again when there is a connection.', failed: 'A newer version could not be fetched just now. It will be tried again.', waiting: `Version ${updater.latest} is ready. It loads when you close Settings${phase === 'running' ? ' and the quiz has ended' : ''}.`, reloading: `Updating to version ${updater.latest}…`, stuck: `Version ${updater.latest} is published but would not load here. Close Settings and tap “Update now” on the start screen.` }[r];
+    toast(said || String(r), 6000);
   } else if (name === 'key-save') {
     const el = $('assistantKey'); const v = el.value.trim();
     if (!v) { toast('Paste the key into the box first.'); return; }
@@ -1006,13 +1093,16 @@ async function carCheck () {
     carCheck.report = [...lines, '', '--- what happened to the audio system ---', ...audio.events, '', '--- log (latest) ---', ...logLines.slice(-160)].join('\n');
     if (phase !== 'running') { audio.closeMic(); showMic(); }
     carCheck.running = false; $('checkActions').hidden = false; renderDiag();
+    updater.idle();
   }
 }
 
 $('openSettings').addEventListener('click', () => { buildSettings(); needEngines = false; needPhrases = false; needMic = false; $('settings').showModal(); });
+$('review').addEventListener('close', () => updater.idle());
 $('settings').addEventListener('close', async () => {
   if (!activeCategories(settings.filters).length) { settings.filters.subs = ['Philosophy']; saveSettings(); feed.setFilters(settings.filters); toast('No category was ticked, so Philosophy is back on.'); }
   renderTopics();
+  updater.idle(); // an update that waited for this panel to close goes ahead (unless a quiz is running)
   if (phase === 'running') {
     if (needMic) { try { await audio.reopenMic({ constraints: micConstraints() }); showMic(); log('microphone reopened with new settings: ' + audio.describe()); } catch (e) { log('microphone change failed: ' + e.message); toast('That microphone could not be opened.'); } }
     if (needEngines) toast('Voice type and recognition model change after you end this session.', 4500);

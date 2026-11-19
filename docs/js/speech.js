@@ -126,12 +126,38 @@ export class TtsClient extends WorkerClient {
     this.pending = new Map();
     this.stats = { jobs: 0, genMs: 0, audioMs: 0 };
     this.byQuality = new Map(); // refinement steps -> { jobs, genMs, audioMs }
+    this.recent = [];           // the last sentences generated: { steps, speed, genMs, audioMs }
+    this.outRate = 0;
   }
 
-  /** Generation statistics for one quality setting, so that slowness is judged at that setting only. */
+  /** Generation statistics for one quality setting. */
   statsFor (steps) { return this.byQuality.get(steps) || { jobs: 0, genMs: 0, audioMs: 0 }; }
 
-  init ({ manifest, voice }) { return this._init({ type: 'init', base: String(this.base), manifest, voice }); }
+  /**
+   * How fast speech is being generated lately at one quality setting: time taken divided by the
+   * length of the speech (0.5 = twice as fast as it is spoken; above 1 the reader cannot keep up).
+   * @returns {{ jobs: number, factor: number }} over the last `last` sentences of 1.5 s or more
+   */
+  recentFactor (steps, last = 8) {
+    const rows = this.recent.filter(r => r.steps === steps).slice(-last);
+    let gen = 0; let audio = 0;
+    for (const r of rows) { gen += r.genMs; audio += r.audioMs; }
+    return { jobs: rows.length, factor: audio ? gen / audio : 0 };
+  }
+
+  init ({ manifest, voice }) { return this._init({ type: 'init', base: String(this.base), manifest, voice, outRate: this.outRate }); }
+
+  /**
+   * Tells the worker which rate the sound system runs at, so that speech arrives already at that
+   * rate (converted properly, and off the page's thread). Clips made before the rate was known, or
+   * for another rate, are converted when played.
+   */
+  setOutputRate (rate) {
+    rate = rate > 0 ? Math.round(rate) : 0;
+    if (rate === this.outRate) return;
+    this.outRate = rate;
+    this.worker.postMessage({ type: 'rate', sampleRate: rate });
+  }
 
   _onMessage (m) {
     if (m.type === 'ready') { this.info = m; this._resolveReady(m); } else if (m.type === 'error') { this.log('speech worker: ' + m.error); if (this._rejectReady) this._rejectReady(new Error(m.error)); } else if (m.type === 'log') this.log('speech worker: ' + m.text);
@@ -141,8 +167,10 @@ export class TtsClient extends WorkerClient {
       if (p && p.steps !== undefined && m.audioMs >= 1500) { // very short clips say little about sustained speed
         const q = this.byQuality.get(p.steps) || { jobs: 0, genMs: 0, audioMs: 0 };
         q.jobs++; q.genMs += m.genMs; q.audioMs += m.audioMs; this.byQuality.set(p.steps, q);
+        this.recent.push({ steps: p.steps, speed: p.speed, genMs: m.genMs, audioMs: m.audioMs });
+        if (this.recent.length > 60) this.recent.splice(0, 20);
       }
-      if (p) p.resolve({ samples: m.samples, sampleRate: m.sampleRate, genMs: m.genMs, audioMs: m.audioMs });
+      if (p) p.resolve({ samples: m.samples, sampleRate: m.sampleRate, genMs: m.genMs, audioMs: m.audioMs, limited: m.limited });
     } else if (m.type === 'failed') {
       const p = this.pending.get(m.id); this.pending.delete(m.id);
       if (p) p.reject(Object.assign(new Error(m.error), { cancelled: m.error === 'cancelled' }));
@@ -155,7 +183,7 @@ export class TtsClient extends WorkerClient {
   /** @returns {{ id: number, promise: Promise<{samples: Float32Array, sampleRate: number}> }} */
   speak (text, { sid = 0, speed = 1, steps = 5, priority = 5, group = '' } = {}) {
     const id = this.nextId++;
-    const promise = new Promise((resolve, reject) => { this.pending.set(id, { resolve, reject, steps }); });
+    const promise = new Promise((resolve, reject) => { this.pending.set(id, { resolve, reject, steps, speed }); });
     promise.catch(() => {}); // callers attach their own handlers; avoid unhandled-rejection noise for cancellations
     this.worker.postMessage({ type: 'speak', id, text, sid, speed, steps, priority, group });
     return { id, promise };

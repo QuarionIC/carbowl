@@ -14,9 +14,10 @@ import { classifyBuzz, isEcho } from './intent.js';
 import { sleep, setTimer, usingWorkerClock } from './clock.js';
 import { Assistant, ASSISTANT_MODELS, DEFAULT_ASSISTANT_MODEL } from './assistant.js';
 import { Updater } from './update.js';
+import { resample } from './dsp.js';
 
 // Also read by tools/stamp-version.mjs, which writes it into version.json: run that tool after changing it.
-const VERSION = '0.3.3';
+const VERSION = '0.3.4';
 // ?test in the address swaps the microphone for a scripted one, so the whole loop can be exercised without sound hardware.
 const TEST = new URLSearchParams(location.search).has('test');
 const BASE = new URL('.', document.baseURI).href;
@@ -37,19 +38,26 @@ const SS = {
 };
 
 // Reading speed is a multiple of the voice's natural pace. Earlier versions defaulted to 1.1 and
-// then 1.65; the default is now 1.3.
+// then 1.65; the default is now 1.3. Up to 1.5 the voice model speaks at that pace itself; above
+// it the model speaks at 1.5 and the speech worker compresses the result (see dsp.js, splitPace).
 const SPEED = { min: 0.8, max: 2, step: 0.05, nudge: 0.1, earlier: [1.1, 1.65], standard: 1.3, calm: 1.35 };
 const clampSpeed = v => Math.min(SPEED.max, Math.max(SPEED.min, Math.round((Number(v) || SPEED.standard) / SPEED.step) * SPEED.step));
+// Where WebKit is the browser (every browser on an iPhone or iPad, and Safari on a Mac) sound must
+// leave through the call audio to be heard beside an open microphone; elsewhere the plain way is
+// the shorter path and the one every other web page uses.
+const UA = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
+const APPLE_WEBKIT = /iPad|iPhone|iPod/.test(UA) || (typeof navigator !== 'undefined' && navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) || (/Safari\//.test(UA) && !/Chrome|Chromium|CriOS|Edg|OPR|Android|FxiOS/.test(UA));
 const DEFAULTS = {
-  settingsVersion: 4,
+  settingsVersion: 5,
   filters: defaultFilters(),
   rules: { ...DEFAULT_RULES },
   voice: 'supertonic', sid: 5, speed: SPEED.standard, calmAnswers: true, steps: 5, volume: 1,
   asr: 'moonshine-base', vadThreshold: 0.5, leniency: 0.8,
   echoCancellation: true, noiseSuppression: true, autoGainControl: true, micId: '',
   // How sound leaves the page: 'element' is the one that is heard beside an open microphone on an
-  // iPhone (in a car especially) and keeps going with the phone locked; 'direct' is the older way.
-  output: 'element',
+  // iPhone (in a car especially) and keeps going with the phone locked; 'direct' is the plain way;
+  // 'auto' is 'element' where it is needed (see APPLE_WEBKIT) and 'direct' everywhere else.
+  output: 'auto',
   // Which model answers "Moderator, ..." questions. (The key it needs is kept apart from these
   // settings: see assistantKey below.)
   assistantModel: DEFAULT_ASSISTANT_MODEL,
@@ -63,7 +71,9 @@ function loadSettings () {
   const from = s.settingsVersion || 1;
   if (from < 3 && (s.speed === undefined || SPEED.earlier.some(v => Math.abs(s.speed - v) < 0.001))) out.speed = SPEED.standard;
   if (from < 4 && s.rules && Math.abs((s.rules.sentenceGapSec || 0) - 0.12) < 0.001) out.rules.sentenceGapSec = DEFAULT_RULES.sentenceGapSec;
-  if (out.output !== 'element' && out.output !== 'direct') out.output = 'element';
+  // 'element' was the default from 0.2.0 to 0.3.3 on every device; it is now chosen by device.
+  if (from < 5 && s.output === 'element') out.output = 'auto';
+  if (!['auto', 'element', 'direct'].includes(out.output)) out.output = 'auto';
   if (!ASSISTANT_MODELS.some(m => m.id === out.assistantModel)) out.assistantModel = DEFAULT_ASSISTANT_MODEL;
   out.settingsVersion = DEFAULTS.settingsVersion;
   out.speed = +clampSpeed(out.speed).toFixed(2);
@@ -99,7 +109,8 @@ function toast (msg, ms = 2600) { const t = $('toast'); t.textContent = msg; t.c
 const mb = bytes => (bytes / 1048576).toFixed(bytes < 10485760 ? 1 : 0) + ' MB';
 
 // ---------- engines ----------
-const audio = new AudioEngine({ log, output: settings.output });
+const outputMode = () => settings.output === 'auto' ? (APPLE_WEBKIT ? 'element' : 'direct') : settings.output;
+const audio = new AudioEngine({ log, output: outputMode() });
 const feed = new QuestionFeed({ store: LS, log: (m, d) => log(m + (d ? ' ' + JSON.stringify(d) : '')) });
 feed.setFilters(settings.filters);
 const historyStore = new HistoryStore({ log });
@@ -196,6 +207,7 @@ async function startEngines () {
   LS.set('loading', { at: Date.now(), asr: settings.asr });
   if (tts) tts.terminate(); if (listener) listener.terminate();
   tts = new TtsClient({ base: BASE, log }); listener = new ListenClient({ base: BASE, log });
+  tts.outRate = audio.sampleRate || 0; // speech is delivered at the sound system's rate once that is known (see the 'rate' listener)
   const started = performance.now();
   try {
     // One after the other, not together: each model is briefly held in memory two or three times
@@ -211,7 +223,7 @@ async function startEngines () {
   }
   LS.del('loading');
   enginesFor = `${settings.voice}|${settings.asr}`;
-  narrator = new Narrator({ tts, audio, voice: voiceParams, phraseCap: () => settings.calmAnswers ? SPEED.calm : null, log });
+  narrator = new Narrator({ tts, audio, voice: voiceParams, phraseCap: () => settings.calmAnswers ? SPEED.calm : null, onSlow: onSlowVoice, log });
   listener.addEventListener('level', e => onLevel(e.detail));
   tts.addEventListener('crash', () => fail('The voice stopped unexpectedly. Reload the page.'));
   listener.addEventListener('crash', () => fail('Listening stopped unexpectedly. Reload the page.'));
@@ -270,13 +282,9 @@ class FakeMic {
   }
 }
 let fakeMic = null;
-async function to16k (clip) {
-  const n = Math.ceil(clip.samples.length * 16000 / clip.sampleRate);
-  const off = new OfflineAudioContext(1, n, 16000);
-  const buf = off.createBuffer(1, clip.samples.length, clip.sampleRate); buf.getChannelData(0).set(clip.samples);
-  const src = off.createBufferSource(); src.buffer = buf; src.connect(off.destination); src.start();
-  return (await off.startRendering()).getChannelData(0).slice();
-}
+// (Not through an OfflineAudioContext: the browser's own conversion does no filtering, and what
+// folds back from above 8 kHz is not something a real microphone would deliver.)
+async function to16k (clip) { return resample(clip.samples, clip.sampleRate, 16000).slice(); }
 /** Test hook: speaks text into the stand-in microphone with one of the synthetic voices. */
 async function speakAsUser (text, { sid = 2, speed = 1, level = 0.5 } = {}) {
   const clip = await tts.speak(text, { sid, speed, steps: 5, priority: 0 }).promise;
@@ -291,8 +299,9 @@ const micConstraints = () => { const c = { echoCancellation: settings.echoCancel
 
 /** Opens sound (and the microphone when asked). Returns whether the microphone is in use. */
 async function openAudio ({ mic }) {
-  if (audio.ctx && audio.mode && audio.mode !== settings.output && audio.live.size === 0) { audio.output = settings.output; await audio.rebuild('the sound output setting changed'); }
-  audio.output = settings.output;
+  const want = outputMode();
+  if (audio.ctx && audio.mode && audio.mode !== want && audio.live.size === 0) { audio.output = want; await audio.rebuild('the sound output setting changed'); }
+  audio.output = want;
   if (!TEST && listener) audio.setSinkFactory(() => listener.createAudioPort());
   let micOk = mic; let r;
   try { r = await audio.start({ mic, constraints: micConstraints() }); } catch (e) {
@@ -466,6 +475,31 @@ audio.addEventListener('mic', e => {
   if (e.detail === 'lost' && phase === 'running') toast('The microphone could not be re-opened. Tap the button to buzz, or End and Start again.', 7000);
 });
 audio.addEventListener('rebuilt', () => { showMic(); renderDiag(); });
+// The sound system's rate is known once it has been opened, and changes when the route does (a car
+// or a headset connecting). The speech worker is told, so that the voice arrives at that rate.
+audio.addEventListener('rate', e => { if (tts) tts.setOutputRate(e.detail); log(`audio: the sound system runs at ${e.detail} Hz${e.detail < 32000 ? ' (a phone-call link: nothing above ' + (e.detail / 2000).toFixed(0) + ' kHz gets through it)' : ''}`); });
+
+// ---------- how the voice is doing ----------
+/** One line on how the voice is being made and played: for the log, Settings and the car check. */
+function voiceReport () {
+  if (!tts || !tts.info) return 'voice not loaded';
+  const r = tts.recentFactor(settings.steps, 8);
+  const made = r.jobs ? `generated in ${r.factor.toFixed(2)} of real time over the last ${r.jobs} long sentence(s)` : 'no long sentence generated yet';
+  const rate = audio.sampleRate;
+  const sound = rate ? `sound system at ${rate} Hz${rate < 32000 ? ' (a phone-call link)' : ''}, ${audio.mode} output` : 'sound not opened yet';
+  const p = audio.played;
+  return `voice ${tts.info.voice} speaker ${settings.sid}, quality ${settings.steps} (never changed automatically), ${settings.speed}x, ${made}; ${sound}; volume ${settings.volume}x; ${p.clips} clip(s) played, ${p.converted} converted on the page, ${p.pressed} with peaks pressed${narrator ? `; ${narrator.lateCount()} late sentence(s) in the last two minutes` : ''}`;
+}
+/** The reader keeps falling behind (see Narrator._noteLate). The voice is left as it is; the listener is told what would help. */
+let slowVoice = null;
+function onSlowVoice (info) {
+  slowVoice = { ...info, at: Date.now() };
+  log(`the reader keeps falling behind: ${info.late} late sentences in two minutes, speech generated in ${info.factor.toFixed(2)} of real time at quality ${info.steps}, ${info.speed}x`);
+  toast(info.steps > 3
+    ? 'Sentences are starting late: this device is taking longer to make the voice than to say it. “Faster” under Settings › Voice quality keeps up.'
+    : 'Sentences are starting late: this device is taking longer to make the voice than to say it. A lower reading speed helps.', 9000);
+  renderDiag();
+}
 
 // ---------- history ----------
 // The questions of the session in hand; everything ever asked is in historyStore.
@@ -547,7 +581,7 @@ function onQuestion (rec) {
   const n = (game ? game.count[rec.type] : 0) + 1;
   $('meta').textContent = [`${rec.type === 'bonus' ? 'Bonus' : 'Tossup'} ${n}`, q.subcategory && q.subcategory !== q.category ? q.subcategory : q.category, q.set && q.set.name, difficultyLabel(q.difficulty)].filter(Boolean).join(' · ');
   // For troubleshooting: which question, and how the voice is doing on this device right now.
-  if (narrator && tts) { const v = narrator._voice(); log(`${rec.type} ${n} (${rec.id}): reading at ${v.speed}x, voice quality ${v.steps}${v.steps !== settings.steps ? ' (lowered from ' + settings.steps + ')' : ''}, speech speed factor ${tts.realTimeFactor.toFixed(2)}`); }
+  if (narrator && tts) log(`${rec.type} ${n} (${rec.id}): ${voiceReport()}`);
   $('answer').hidden = true; $('answer').innerHTML = ''; $('heard').textContent = '';
   app.dataset.result = '';
   $('progress').hidden = false; $('progressFill').style.width = '0%';
@@ -738,10 +772,10 @@ function buildSettings () {
   <section class="sec"><h3>Voice</h3>
     ${Object.keys(VOICES).length > 1 ? sel('voice', 'Voice type', Object.entries(VOICES).map(([k, x]) => [k, x.label]), 'Natural sounds better; Plain is a smaller download.') : ''}
     ${v.speakers > 1 ? sel('sid', 'Speaker', v.speakerNames.map((n, i) => [i, n])) : ''}
-    ${rng('speed', 'Reading speed', SPEED.min, SPEED.max, SPEED.step, '×', 'Also the − and + beside the microphone meter, or say “read faster” / “read slower”.')}
+    ${rng('speed', 'Reading speed', SPEED.min, SPEED.max, SPEED.step, '×', 'Also the − and + beside the microphone meter, or say “read faster” / “read slower”. Above 1.5× the voice still speaks at 1.5× and what it says is compressed in time: asked to go faster than that itself, it starts to drop sounds.')}
     ${sw('calmAnswers', 'Calmer pace for answers and verdicts', `Questions are read at full speed; “The answer is …” never faster than ${SPEED.calm}×.`)}
-    ${settings.voice === 'supertonic' ? sel('steps', 'Voice quality', [[3, 'Faster'], [5, 'Standard'], [8, 'Best (slower to generate)']], 'Lowered automatically if this phone cannot keep up.') : ''}
-    ${rng('volume', 'Volume', 0.2, 1.5, 0.05, '×')}
+    ${settings.voice === 'supertonic' ? sel('steps', 'Voice quality', [[3, 'Faster'], [5, 'Standard'], [8, 'Best (slower to generate)']], 'Stays exactly as chosen: it is never lowered for you. If sentences start late, this device cannot make the voice fast enough; choose Faster then. <span id="voiceSpeed"></span>') : ''}
+    ${rng('volume', 'Volume', 0.2, 1.5, 0.05, '×', 'Above 1× the loudest peaks are pressed down to fit, so louder never turns into distortion.')}
     <div class="rowb"><button type="button" class="btn" data-act="test-voice">Play a sample</button></div>
   </section>
   <section class="sec"><h3>Listening</h3>
@@ -766,7 +800,7 @@ function buildSettings () {
   </section>
   <section class="sec"><h3>Car, lock screen, other apps</h3>
     <p class="note">With CarPlay or Bluetooth the car shows Carbowl as a phone call: that is how it gets the car’s microphone. <b>The car’s call volume is separate from its music volume</b>: play the test tone and turn the volume knob up while it sounds. Carbowl keeps going with the phone locked or another app in front as long as it runs in a Safari tab${STANDALONE ? ' — <b>it is running as a Home Screen app now, which iOS cuts off from the microphone in the background: open it in Safari instead</b>' : ''}.</p>
-    ${sel('output', 'Sound output', [['element', 'For car and lock screen (recommended)'], ['direct', 'Direct']], 'Change only if sound is missing or distorted. Takes effect at the next Start.')}
+    ${sel('output', 'Sound output', [['auto', 'Automatic (recommended)'], ['element', 'Through the call audio (car, lock screen)'], ['direct', 'Direct']], `Automatic uses the call audio on an iPhone, an iPad and in Safari, where that is what lets the reader be heard beside an open microphone, and the direct way everywhere else. On this device: ${outputMode() === 'element' ? 'the call audio' : 'direct'}. Change only if sound is missing or distorted. Takes effect at the next Start.`)}
     <div class="rowb"><button type="button" class="btn" data-act="test-tone">Play test tone</button><button type="button" class="btn" data-act="car-check">Run the car check</button><button type="button" class="btn" data-act="reconnect">Re-connect sound</button>${navigator.mediaDevices && navigator.mediaDevices.selectAudioOutput ? '<button type="button" class="btn" data-act="choose-output">Choose where sound plays</button>' : ''}</div>
     <p class="note">“Re-connect sound” lets go of the microphone and the speaker and takes them up again; use it if the car connected after you started and the sound stayed on the phone.</p>
     <pre class="log" id="checkView" hidden></pre>
@@ -840,9 +874,15 @@ async function fillMics () {
   s.innerHTML = '<option value="">Default</option>' + list.filter(d => d.id && d.id !== 'default').map(d => `<option value="${escapeHtml(d.id)}" ${settings.micId === d.id ? 'selected' : ''}>${escapeHtml(d.label)}</option>`).join('');
 }
 function renderDiag () {
+  // Under "Voice quality": how fast this device is making the voice at the chosen setting, measured.
+  const vs = $('voiceSpeed');
+  if (vs) {
+    const r = tts ? tts.recentFactor(settings.steps, 8) : { jobs: 0, factor: 0 };
+    vs.textContent = !r.jobs ? '' : `Measured just now: a sentence takes ${Math.round(100 * r.factor)}% of its own length to make${r.factor > 1 ? ', which is too slow to keep up' : r.factor > 0.85 ? ', which only just keeps up' : ''}.${slowVoice && Date.now() - slowVoice.at < 30 * 60000 ? ' Sentences have been starting late.' : ''}`;
+  }
   const el = $('diagInfo'); if (!el) return;
   const bits = [];
-  if (tts && tts.info) bits.push(`voice ${tts.info.voice}, speed factor ${tts.realTimeFactor ? tts.realTimeFactor.toFixed(2) : '—'}`);
+  if (tts && tts.info) bits.push(voiceReport());
   if (listener && listener.info) bits.push(`recognition ${listener.info.asr}`);
   if (audio.ctx) bits.push(audio.describe() + (audio.health.ok ? '' : ' — ' + audio.health.problems.join('; ')));
   el.textContent = bits.join(' · ');
@@ -944,7 +984,7 @@ async function settingsAction (name) {
   } else if (name === 'choose-output') {
     try { const d = await audio.chooseOutput(); toast('Sound goes to ' + ((d && d.label) || 'the default output')); } catch (e) { toast('No output chosen: ' + (e.message || e)); }
   } else if (name === 'copy-log') {
-    const text = [`Carbowl ${VERSION}`, navigator.userAgent, 'settings ' + JSON.stringify({ ...settings, filters: { ...settings.filters, alts: `${settings.filters.alts.length} alternates` } }), 'audio ' + audio.describe(), '--- audio events ---', ...audio.events, '--- log ---', ...logLines].join('\n');
+    const text = [`Carbowl ${VERSION}`, navigator.userAgent, 'settings ' + JSON.stringify({ ...settings, filters: { ...settings.filters, alts: `${settings.filters.alts.length} alternates` } }), 'audio ' + audio.describe(), voiceReport(), '--- audio events ---', ...audio.events, '--- log ---', ...logLines].join('\n');
     await copyText(text, 'Log copied', 'logView');
   } else if (name === 'show-log') { const pre = $('logView'); pre.hidden = !pre.hidden; if (!pre.hidden) { pre.textContent = logLines.slice(-120).join('\n'); pre.scrollTop = pre.scrollHeight; } } else if (name === 'clear-models') {
     if (phase === 'running') { toast('End the session first.'); return; }
@@ -1008,7 +1048,7 @@ async function carCheck () {
   try {
     say(`Carbowl ${VERSION} car check, ${new Date().toISOString()}`);
     say(navigator.userAgent);
-    say(`Opened ${STANDALONE ? 'as a Home Screen app (iOS stops its microphone in the background: use Safari)' : 'in the browser'}; page ${document.visibilityState}; timers ${usingWorkerClock() ? 'in a worker' : 'on the page'}; sound output setting "${settings.output}"; microphone setting ${settings.micId ? 'a chosen one' : 'Default'}.`);
+    say(`Opened ${STANDALONE ? 'as a Home Screen app (iOS stops its microphone in the background: use Safari)' : 'in the browser'}; page ${document.visibilityState}; timers ${usingWorkerClock() ? 'in a worker' : 'on the page'}; sound output setting "${settings.output}"${settings.output === 'auto' ? ` (${outputMode()} on this device)` : ''}; microphone setting ${settings.micId ? 'a chosen one' : 'Default'}.`);
 
     say('1. Opening sound and the microphone, as the quiz does…');
     const micOk = await openAudio({ mic: true });
@@ -1092,7 +1132,8 @@ async function carCheck () {
 
     rep = await audio.report();
     say(`At the end: ${rep.now}; state: ${rep.health}`);
-    say(`Speech speed factor ${tts.realTimeFactor.toFixed(2)} (below 0.7 is comfortable).`);
+    say(`Voice: ${voiceReport()}.`);
+    if (audio.sampleRate && audio.sampleRate < 32000) say(`   The sound system is running at ${audio.sampleRate} Hz, the rate of a phone call: nothing above ${(audio.sampleRate / 2000).toFixed(0)} kHz can get through this link, so the reader sounds like a voice on the phone here. That limit is the link's (it is how the car's microphone is reached), not the voice's.`);
     say('Done. Tap "Copy the car check report" and paste it to Claude.');
     await speak('Done. Thank you.');
   } catch (e) { say('The check stopped: ' + (e && e.message ? e.message : e)); } finally {

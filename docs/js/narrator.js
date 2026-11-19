@@ -11,42 +11,60 @@ export class Narrator {
    * @param {import('./audio.js').AudioEngine} o.audio
    * @param {() => { sid: number, speed: number, steps: number }} o.voice current voice settings
    * @param {() => number|null} [o.phraseCap] top speed for verdicts and answers (questions may be read faster)
+   * @param {(info: { late: number, factor: number, steps: number, speed: number }) => void} [o.onSlow]
+   *   called (at most once a minute) when sentences keep starting late because speech is generated too slowly
    */
-  constructor ({ tts, audio, voice, phraseCap, log }) {
+  constructor ({ tts, audio, voice, phraseCap, onSlow, log }) {
     this.tts = tts; this.audio = audio; this.voice = voice; this.phraseCap = phraseCap || (() => null); this.log = log || (() => {});
+    this.onSlow = onSlow || (() => {});
     this.cache = new Map();   // key -> Promise<audio>
     this.pinned = new Set();  // keys never evicted (fixed phrases)
     this.current = null;      // the Reading or one-off phrase now playing
     this.groupN = 0;
+    this.late = [];           // when sentences started late (ms on the page's clock)
+    this.lastSlowNotice = 0;
   }
 
   _key (text, v) { return `${v.sid}|${v.speed}|${v.steps}|${text}`; }
 
   /**
-   * Voice settings for a piece of speech. Synthesis quality follows how fast this device generates
-   * speech, so the reader never falls behind; verdicts and answers ("phrase") keep to a calmer pace
-   * than fast question reading when a cap is set.
+   * Voice settings for a piece of speech: the speaker, pace and quality chosen in Settings, always.
+   * (Until 0.3.3 the quality was taken down, for the rest of the session, whenever speech seemed to
+   * be generated slowly. On a computer busy with something else that changed the voice for no
+   * reason a listener could see, and it never came back.) Verdicts and answers ("phrase") keep to a
+   * calmer pace than fast question reading when a cap is set.
    * @param {'phrase'} [kind]
    */
   _voice (kind) {
     const v = { ...this.voice() };
     if (kind === 'phrase') { const cap = this.phraseCap(); if (cap && v.speed > cap) v.speed = cap; }
-    // Quality (refinement steps) only comes down when this device has shown, at the current setting,
-    // that it cannot generate speech as fast as it is spoken; and it then stays down for the session,
-    // so the voice does not flip back and forth.
-    let steps = v.steps;
-    if (this.stepCap && steps > this.stepCap) steps = this.stepCap;
-    const st = this.tts.statsFor ? this.tts.statsFor(steps) : null;
-    if (st && st.jobs >= 3 && st.audioMs > 6000 && st.genMs / st.audioMs > 0.9) {
-      const lower = [8, 5, 3, 2].find(x => x < steps);
-      if (lower) {
-        this.stepCap = lower;
-        this.log(`this device generates speech slowly (${(st.genMs / st.audioMs).toFixed(2)} of real time at quality ${steps}); lowering voice quality to ${lower} so the reader keeps up`);
-        steps = lower;
-      }
-    }
-    v.steps = steps;
     return v;
+  }
+
+  /**
+   * A sentence started late because its audio was not ready. One late sentence means nothing (the
+   * device was busy for a moment); three within two minutes, with speech measurably taking longer
+   * to generate than to say, is reported, so that the listener can be told what would help. The
+   * voice itself is left alone.
+   */
+  _noteLate (lateMs) {
+    const now = Date.now();
+    this.late.push(now);
+    const late = this.lateCount();
+    const v = this.voice();
+    const recent = this.tts.recentFactor ? this.tts.recentFactor(v.steps, 6) : { jobs: 0, factor: 0 };
+    this.log(`reader fell behind: the next sentence started ${Math.round(lateMs)} ms late (speech generated in ${recent.factor ? recent.factor.toFixed(2) : '?'} of real time lately at quality ${v.steps})`);
+    if (late >= 3 && recent.jobs >= 3 && recent.factor > 1 && now - this.lastSlowNotice > 60000) {
+      this.lastSlowNotice = now;
+      this.onSlow({ late, factor: recent.factor, steps: v.steps, speed: v.speed });
+    }
+  }
+
+  /** How many sentences started late in the last two minutes. */
+  lateCount () {
+    const now = Date.now();
+    while (this.late.length && now - this.late[0] > 120000) this.late.shift();
+    return this.late.length;
   }
 
   /** Starts (or reuses) synthesis of a piece of text. */
@@ -165,7 +183,7 @@ export class Narrator {
 }
 
 export class Reading {
-  constructor (narrator, chunks, { group = '', gap = 0.12, lookahead = 2, onProgress, from = 0 } = {}) {
+  constructor (narrator, chunks, { group = '', gap = 0.12, lookahead = 3, onProgress, from = 0 } = {}) {
     this.n = narrator; this.chunks = chunks; this.group = group; this.gap = gap; this.lookahead = lookahead; this.onProgress = onProgress;
     this.kind = 'reading';
     this.timeline = [];       // { i, startAt, offset, bufferDur, endAt }
@@ -212,7 +230,7 @@ export class Reading {
       const now = this.n.audio.time;
       if (nextStart && now > nextStart + 0.25 && performance.now() - waitFrom > 250) {
         this.underruns++;
-        this.n.log(`reader fell behind: the next sentence started ${Math.round((now - nextStart) * 1000)} ms late (speech speed factor ${this.n.tts.realTimeFactor.toFixed(2)})`);
+        this.n._noteLate((now - nextStart) * 1000);
       }
       const handle = this.n.audio.play(audio.samples, audio.sampleRate, { when: Math.max(now + 0.02, nextStart), offset: startSec });
       this.handle = handle;

@@ -1,21 +1,23 @@
 /* Speech synthesis worker: turns text into audio samples with an on-device voice model.
  * Runs apart from the listening worker so that generating a sentence never delays hearing a buzz.
  *
- * Messages in:  { type: 'init', base, manifest, voice: 'supertonic' | 'piper-lessac' }
+ * Messages in:  { type: 'init', base, manifest, voice: 'supertonic' | 'piper-lessac', outRate? }
  *               { type: 'speak', id, text, sid, speed, steps, priority, group }
  *               { type: 'cancel', group?, ids?, all? }
+ *               { type: 'rate', sampleRate }   the rate the sound system runs at: audio is delivered at it
  * Messages out: { type: 'ready', voice, sampleRate, speakers, heapMiB, initMs }
- *               { type: 'audio', id, samples, sampleRate, genMs, audioMs }   (samples transferred)
+ *               { type: 'audio', id, samples, sampleRate, genMs, audioMs, limited }   (samples transferred)
  *               { type: 'failed', id, error } | { type: 'error', error } | { type: 'log', text }
  */
-/* global importScripts, loadBundle, unlinkAll, startRuntime, heapMiB, describeError, createOfflineTts, piperPhonemize, piperPhonemizeInitialize */
+/* global importScripts, loadBundle, unlinkAll, startRuntime, heapMiB, describeError, createOfflineTts, piperPhonemize, piperPhonemizeInitialize, CarbowlDsp */
 'use strict';
-importScripts('common.js');
+importScripts('common.js', 'dsp.js');
 
 let runtime = null;
 let tts = null;
 let voiceKind = null;
 let usesPhonemizer = false;
+let outRate = 0;             // 0: deliver at the voice model's own rate
 const queue = [];
 let pumping = false;
 const cancelledGroups = new Set();
@@ -77,34 +79,21 @@ async function init ({ base, manifest, voice }) {
   post({ type: 'ready', voice, sampleRate: tts.sampleRate, speakers: tts.numSpeakers, heapMiB: heapMiB(runtime), initMs: Date.now() - t0 });
 }
 
-/** Removes leading/trailing near-silence beyond a short margin and evens out loudness. */
-function tidy (samples, sampleRate) {
-  const n = samples.length;
-  if (!n) return samples;
-  let peak = 0;
-  for (let i = 0; i < n; i++) { const a = Math.abs(samples[i]); if (a > peak) peak = a; }
-  if (peak < 1e-4) return new Float32Array(0);
-  const floor = peak * 0.02;
-  let a = 0; let b = n - 1;
-  while (a < n && Math.abs(samples[a]) < floor) a++;
-  while (b > a && Math.abs(samples[b]) < floor) b--;
-  const lead = Math.round(sampleRate * 0.03); const tail = Math.round(sampleRate * 0.08);
-  a = Math.max(0, a - lead); b = Math.min(n - 1, b + tail);
-  const out = samples.slice(a, b + 1);
-  const gain = Math.min(4, 0.89 / peak);
-  const fade = Math.min(out.length >> 1, Math.round(sampleRate * 0.008));
-  for (let i = 0; i < out.length; i++) out[i] *= gain;
-  for (let i = 0; i < fade; i++) { const g = i / fade; out[i] *= g; out[out.length - 1 - i] *= g; }
-  return out;
-}
-
 function synthesize ({ text, sid, speed, steps }) {
+  // The model is asked for a pace it speaks clearly at; a faster reading is made from that by
+  // compressing it in time (dsp.js, splitPace: the model's own fast speech loses sounds).
+  const pace = CarbowlDsp.splitPace(speed || 1);
+  let audio;
   if (usesPhonemizer) {
     const phonemes = (piperPhonemize(text, 'en-us') || []).filter(s => s.length > 0);
     if (!phonemes.length) return { samples: new Float32Array(0), sampleRate: tts.sampleRate };
-    return tts.generateWithConfig(text, { sid: sid || 0, speed: speed || 1, phonemeCodepoints: phonemes });
+    audio = tts.generateWithConfig(text, { sid: sid || 0, speed: pace.model, phonemeCodepoints: phonemes });
+  } else audio = tts.generateWithConfig(text, { sid: sid || 0, speed: pace.model, numSteps: steps || 5, extra: { lang: 'en' } });
+  if (pace.stretch > 1.004 && audio.samples.length) {
+    const rate = audio.sampleRate || tts.sampleRate;
+    return { samples: CarbowlDsp.timeScale(audio.samples, rate, pace.stretch), sampleRate: rate };
   }
-  return tts.generateWithConfig(text, { sid: sid || 0, speed: speed || 1, numSteps: steps || 5, extra: { lang: 'en' } });
+  return audio;
 }
 
 async function pump () {
@@ -120,9 +109,11 @@ async function pump () {
       const t0 = performance.now();
       try {
         const audio = synthesize(job);
-        const samples = tidy(audio.samples, audio.sampleRate || tts.sampleRate);
-        const rate = audio.sampleRate || tts.sampleRate;
-        post({ type: 'audio', id: job.id, samples, sampleRate: rate, genMs: Math.round(performance.now() - t0), audioMs: Math.round(1000 * samples.length / rate) }, [samples.buffer]);
+        // Trimmed, brought to the standard loudness, and converted to the sound system's rate here,
+        // off the page's own thread (see dsp.js for why the browser is not left to convert it).
+        const clip = CarbowlDsp.finishClip(audio.samples, audio.sampleRate || tts.sampleRate, { outRate });
+        const samples = clip.samples; const rate = clip.sampleRate;
+        post({ type: 'audio', id: job.id, samples, sampleRate: rate, genMs: Math.round(performance.now() - t0), audioMs: Math.round(1000 * samples.length / rate), limited: clip.limited }, [samples.buffer]);
       } catch (e) {
         post({ type: 'failed', id: job.id, error: describeError(e, runtime) });
       }
@@ -135,7 +126,10 @@ async function pump () {
 self.onmessage = e => {
   const m = e.data;
   if (m.type === 'init') {
+    if (m.outRate > 0) outRate = Math.round(m.outRate);
     init(m).catch(err => post({ type: 'error', error: describeError(err, runtime) }));
+  } else if (m.type === 'rate') {
+    outRate = m.sampleRate > 0 ? Math.round(m.sampleRate) : 0;
   } else if (m.type === 'speak') {
     if (!tts) { post({ type: 'failed', id: m.id, error: 'voice not ready' }); return; }
     queue.push({ priority: 5, ...m });

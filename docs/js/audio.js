@@ -19,6 +19,12 @@
 // counting when the context underneath has to be rebuilt.
 
 import { setTimer, clearTimer } from './clock.js';
+import { resample, limit } from './dsp.js';
+
+// The highest a sample may go after the volume setting has been applied. Volumes above 1× are made
+// by pressing the loudest peaks down (dsp.js, limit), not by letting them run over full scale,
+// where the sound system would clip them into a rasp.
+const FULL = 0.97;
 
 const TONES = {
   // name: [ [frequency Hz, start s, duration s, peak gain, type] ... ]
@@ -60,6 +66,8 @@ export class AudioEngine extends EventTarget {
     this.beat = { at: 0, frames: 0, rms: 0, input: false };
     this._w = { timer: null, lastCtx: -1, stalled: 0, muted: 0, silent: 0, lastReopen: 0, lastRebuild: 0, rebuilds: 0, lastPlay: 0 };
     this._busy = null; this._deviceSig = ''; this._deviceTimer = null; this._quietUntil = 0; this._workletFor = null;
+    this._converted = new WeakMap(); // clip samples -> { rate, samples } at the context's rate
+    this.played = { clips: 0, converted: 0, pressed: 0 };
   }
 
   /** Seconds on the engine's clock (see the note at the top of the file). */
@@ -131,7 +139,7 @@ export class AudioEngine extends EventTarget {
     const ctx = new Ctx({ latencyHint: 'interactive' });
     this.ctx = ctx;
     this.master = ctx.createGain();
-    this.master.gain.value = this.volume;
+    this.master.gain.value = Math.min(1, this.volume);
     let mode = this.output;
     if (mode === 'element' && typeof ctx.createMediaStreamDestination !== 'function') mode = 'direct';
     if (mode === 'element') {
@@ -152,6 +160,8 @@ export class AudioEngine extends EventTarget {
     });
     this._bed();
     this._w.lastCtx = -1; this._w.stalled = 0;
+    // Whoever makes the speech is told the rate, so that it arrives ready for this context.
+    this.dispatchEvent(new CustomEvent('rate', { detail: ctx.sampleRate }));
   }
 
   /** Where branches that must run but not be heard are tied off. */
@@ -435,7 +445,37 @@ export class AudioEngine extends EventTarget {
 
   // ---- playing ----------------------------------------------------------------------------
 
-  setVolume (v) { this.volume = v; if (this.master) this.master.gain.setTargetAtTime(v, this.ctx.currentTime, 0.02); }
+  /**
+   * Up to 1× the volume is a plain gain. Above 1× the extra is put into each clip as it is played,
+   * with its peaks pressed down to fit (see _forOutput), so that louder never means clipped.
+   */
+  setVolume (v) { this.volume = v; if (this.master) this.master.gain.setTargetAtTime(Math.min(1, v), this.ctx.currentTime, 0.02); }
+
+  /**
+   * The samples as they will be handed to the sound system: at the context's own rate (the browser
+   * is never left to convert, see dsp.js), and with any volume above 1× already applied.
+   */
+  _forOutput (samples, sampleRate, rate) {
+    let data = samples;
+    if (Math.round(sampleRate) !== rate) {
+      const had = this._converted.get(samples);
+      if (had && had.rate === rate) data = had.samples; else {
+        data = resample(samples, sampleRate, rate);
+        this._converted.set(samples, { rate, samples: data });
+        this.played.converted++;
+      }
+    }
+    const boost = Math.max(1, this.volume);
+    let peak = 0;
+    for (let i = 0; i < data.length; i++) { const a = data[i] < 0 ? -data[i] : data[i]; if (a > peak) peak = a; }
+    if (peak * boost > FULL) {
+      // Never the cached or the caller's samples: they are played again at other volumes.
+      const r = limit(new Float32Array(data), rate, { gain: boost, ceiling: FULL });
+      data = r.samples; this.played.pressed++;
+      return { data, gain: 1 };
+    }
+    return { data, gain: boost };
+  }
 
   /**
    * Plays mono samples. Returns a handle with the scheduled start time, the duration, a promise
@@ -453,11 +493,13 @@ export class AudioEngine extends EventTarget {
       setTimer(off, 250);
       return { startAt: now, offset: 0, duration: 0, endAt: now, ended, position: () => 0, stop: () => off(), abandon: () => off() };
     }
-    const buffer = ctx.createBuffer(1, Math.max(1, samples.length), sampleRate);
-    buffer.getChannelData(0).set(samples);
+    const out = this._forOutput(samples, sampleRate, ctx.sampleRate);
+    const buffer = ctx.createBuffer(1, Math.max(1, out.data.length), ctx.sampleRate);
+    buffer.getChannelData(0).set(out.data);
+    this.played.clips++;
     const src = ctx.createBufferSource();
     src.buffer = buffer;
-    const g = ctx.createGain(); g.gain.value = gain;
+    const g = ctx.createGain(); g.gain.value = gain * out.gain;
     src.connect(g); g.connect(this.master);
     const startCtx = Math.max(ctx.currentTime + 0.01, (when || 0) - epoch);
     const off = Math.min(Math.max(0, offset), Math.max(0, buffer.duration - 0.01));
@@ -507,7 +549,7 @@ export class AudioEngine extends EventTarget {
     for (const [freq, at, dur, peak, type] of spec) {
       const osc = ctx.createOscillator(); osc.type = type; osc.frequency.value = freq;
       const g = ctx.createGain();
-      const a = t0 + at; const level = peak * gain * 0.6;
+      const a = t0 + at; const level = Math.min(0.9, peak * gain * 0.6 * Math.max(1, this.volume));
       g.gain.setValueAtTime(0, a);
       g.gain.linearRampToValueAtTime(level, a + 0.008);
       g.gain.setValueAtTime(level, a + Math.max(0.01, dur - 0.03));

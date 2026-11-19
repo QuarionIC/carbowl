@@ -2,6 +2,7 @@
 // an answer, or nothing (noise, or the app hearing its own voice).
 
 import { wordsOf } from './speechtext.js';
+import { speakable } from './reading.js';
 import { soundKeys, soundSimilarity, stringSimilarity } from './phonetics.js';
 
 const BUZZ_WORDS = new Set(['buzz', 'buzzed', 'buzzes', 'buzzs', 'buzzing', 'buzzer', 'buz', 'buzzz', 'bus', 'buss', 'buses', 'boss', 'bzz', 'bzzt', 'fuzz', 'buzzy', 'busz', 'buzzin']);
@@ -183,21 +184,27 @@ export function isOnlyBuzz (text) {
  * @param {string} spoken text the app was saying at that time (a few seconds either side)
  */
 export function isEcho (heard, spoken) {
-  const h = wordsOf(heard); const s = wordsOf(spoken);
+  const h = wordsOf(heard);
   if (h.length === 0) return false;
-  if (!s.length) return false;
+  // What was shown and what was said can differ ("Louis XIV" is said "Louis the fourteenth", see
+  // reading.js): the words heard are held against both.
+  const written = wordsOf(spoken); const said = wordsOf(speakable(spoken));
+  if (!written.length && !said.length) return false;
   // Longest common subsequence of words, allowing light misspelling of each word.
   const same = (a, b) => a === b || (a.length > 3 && b.length > 3 && (a.startsWith(b.slice(0, 4)) || b.startsWith(a.slice(0, 4))));
-  const dp = new Array(s.length + 1).fill(0);
-  for (let i = 1; i <= h.length; i++) {
-    let prev = 0;
-    for (let j = 1; j <= s.length; j++) {
-      const tmp = dp[j];
-      dp[j] = same(h[i - 1], s[j - 1]) ? prev + 1 : Math.max(dp[j], dp[j - 1]);
-      prev = tmp;
+  const common = s => {
+    const dp = new Array(s.length + 1).fill(0);
+    for (let i = 1; i <= h.length; i++) {
+      let prev = 0;
+      for (let j = 1; j <= s.length; j++) {
+        const tmp = dp[j];
+        dp[j] = same(h[i - 1], s[j - 1]) ? prev + 1 : Math.max(dp[j], dp[j - 1]);
+        prev = tmp;
+      }
     }
-  }
-  const matched = dp[s.length];
+    return dp[s.length];
+  };
+  const matched = Math.max(common(written), said.join(' ') === written.join(' ') ? 0 : common(said));
   // One short common word ("this", "that") proves nothing; it is more likely a misheard buzz.
   if (h.length === 1) return matched === 1 && h[0].length >= 5;
   return matched / h.length >= 0.6;

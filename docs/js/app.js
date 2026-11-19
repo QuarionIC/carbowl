@@ -18,7 +18,7 @@ import { Updater } from './update.js';
 import { resample } from './dsp.js';
 
 // Also read by tools/stamp-version.mjs, which writes it into version.json: run that tool after changing it.
-const VERSION = '0.3.5';
+const VERSION = '0.3.6';
 // ?test in the address swaps the microphone for a scripted one, so the whole loop can be exercised without sound hardware.
 const TEST = new URLSearchParams(location.search).has('test');
 const BASE = new URL('.', document.baseURI).href;
@@ -92,6 +92,33 @@ const assistantKey = {
   set: v => LS.set('assistantKey', String(v).trim()),
   clear: () => LS.del('assistantKey')
 };
+
+// ---------- light or dark ----------
+// The page follows the device until the button in the top bar is used; after that it keeps the
+// look that was chosen (Settings > Feedback > Appearance goes back to following the device). The
+// choice is stored under a name of its own so that index.html can put it on before anything is drawn.
+const THEME_BG = { light: '#F7F7F4', dark: '#13161C' };
+const darkQuery = typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: dark)') : null;
+const themeChoice = () => { const t = LS.get('theme', 'auto'); return t === 'light' || t === 'dark' ? t : 'auto'; };
+const themeNow = () => { const c = themeChoice(); return c === 'auto' ? (darkQuery && darkQuery.matches ? 'dark' : 'light') : c; };
+function applyTheme () {
+  const choice = themeChoice(); const now = themeNow();
+  const root = document.documentElement;
+  if (choice === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', choice);
+  // The browser's own bars, scroll bars and form controls follow.
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m => { if (!m.dataset.auto) m.dataset.auto = m.content; m.content = choice === 'auto' ? m.dataset.auto : THEME_BG[choice]; });
+  const scheme = document.querySelector('meta[name="color-scheme"]'); if (scheme) scheme.content = choice === 'auto' ? 'light dark' : choice;
+  const b = $('themeToggle');
+  if (b) { const to = now === 'dark' ? 'light' : 'dark'; b.setAttribute('aria-label', `Switch to ${to} mode`); b.title = to === 'dark' ? 'Dark mode' : 'Light mode'; }
+  const s = $('s-theme'); if (s) s.value = choice;
+}
+function setTheme (choice) {
+  if (choice === 'light' || choice === 'dark') LS.set('theme', choice); else LS.del('theme');
+  applyTheme();
+}
+if ($('themeToggle')) $('themeToggle').addEventListener('click', () => setTheme(themeNow() === 'dark' ? 'light' : 'dark'));
+if (darkQuery) { if (darkQuery.addEventListener) darkQuery.addEventListener('change', applyTheme); else if (darkQuery.addListener) darkQuery.addListener(applyTheme); }
+applyTheme();
 
 // ---------- log (kept in memory; copied out from Settings for troubleshooting) ----------
 const logLines = [];
@@ -660,11 +687,12 @@ function renderScore () {
   const s = game ? game.score() : scoreOf(sessionHistory);
   const el = $('score');
   if (!s.tossups && !s.bonuses) { el.textContent = ''; return; }
-  const parts = [];
-  if (s.tossups) parts.push(`TU <b>${s.powers + s.tens}/${s.tossups}</b>${s.negs ? ` −${s.negs}` : ''}`);
-  if (s.bonuses) parts.push(`PPB <b>${s.ppb.toFixed(1)}</b>`);
-  parts.push(`<b>${s.points}</b> pts`);
-  el.innerHTML = parts.join(' · ');
+  // Written points first and laid out from the right (app.css): where the top bar is too narrow
+  // for all of it, whole parts drop out, tossups first, instead of the points being cut off.
+  const parts = [`<span><b>${s.points}</b> pts</span>`];
+  if (s.bonuses) parts.push(`<span>PPB <b>${s.ppb.toFixed(1)}</b> · </span>`);
+  if (s.tossups) parts.push(`<span>TU <b>${s.powers + s.tens}/${s.tossups}</b>${s.negs ? ` −${s.negs}` : ''} · </span>`);
+  el.innerHTML = parts.join('');
 }
 
 function renderMain () {
@@ -815,6 +843,7 @@ function buildSettings () {
     ${rng('rules.sentenceGapSec', 'Pause between sentences', 0, 1.2, 0.05, ' s', 'A longer pause makes buzzing easier if the car’s speakers drown you out.')}
   </section>
   <section class="sec"><h3>Feedback</h3>
+    <label class="field"><span>Appearance<small>The sun or moon button beside the title switches between light and dark.</small></span><select id="s-theme" data-theme-choice="1">${[['auto', 'Match this device'], ['light', 'Light'], ['dark', 'Dark']].map(([v, t]) => `<option value="${v}" ${themeChoice() === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
     ${sw('showText', 'Show the question text as it is read')}
     ${sw('rules.announceType', 'Announce “tossup” and “bonus”')}
     ${sw('rules.sayHeard', 'Say what was heard after a wrong answer')}
@@ -915,6 +944,7 @@ $('topics').addEventListener('change', e => { const t = e.target; if (t.dataset 
 let needEngines = false; let needPhrases = false; let needMic = false;
 function onSettingInput (e) {
   const t = e.target;
+  if (t.dataset.themeChoice) { setTheme(t.value); return; }
   if (t.dataset.k) {
     let v = t.type === 'checkbox' ? t.checked : t.value;
     if (t.dataset.num || t.type === 'range') v = Number(v);

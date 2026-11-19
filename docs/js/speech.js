@@ -3,7 +3,7 @@
 export const CACHE_NAME = 'carbowl-models-v1';
 
 export const VOICES = {
-  supertonic: { label: 'Natural (Supertonic)', bundles: ['tts-supertonic'], speakers: 10, speakerNames: ['Male 1', 'Male 2', 'Male 3', 'Male 4', 'Male 5', 'Female 1', 'Female 2', 'Female 3', 'Female 4', 'Female 5'] },
+  supertonic: { label: 'Natural (Supertonic)', bundles: ['tts-supertonic'], speakers: 10, speakerNames: ['Female 1', 'Female 2', 'Female 3', 'Female 4', 'Female 5', 'Male 1', 'Male 2', 'Male 3', 'Male 4', 'Male 5'] },
   'piper-lessac': { label: 'Plain (Piper)', bundles: ['tts-piper-lessac', 'phonemizer'], speakers: 1, speakerNames: ['Lessac'] }
 };
 export const RECOGNIZERS = {

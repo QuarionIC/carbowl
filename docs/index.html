@@ -14,6 +14,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="app.css">
+<!-- A light or dark look chosen with the button in the top bar is put on before anything is drawn. -->
+<script>try{var t=JSON.parse(localStorage.getItem('cb.theme'));if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
 </head>
 <body>
 <div class="app" id="app" data-phase="boot" data-state="idle">
@@ -21,6 +23,7 @@
     <h1>Carbowl</h1>
     <span class="ver" id="ver" title="The version of Carbowl running in this page"></span>
     <div class="score" id="score" aria-label="Score"></div>
+    <button class="icon" id="themeToggle" aria-label="Switch between light and dark" title="Light or dark"><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.6 13.2A8.600 8.600 0 1 1 10.800 3.400a6.700 6.700 0 0 0 9.800 9.800z"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.4"/><path d="M11 2h2v3.200h-2zM11 18.800h2V22h-2zM2 11h3.200v2H2zM18.800 11H22v2h-3.200zM5.600 4.200l2.300 2.300-1.400 1.400-2.300-2.300zM17.500 16.100l2.300 2.300-1.400 1.400-2.300-2.300zM19.800 5.600l-2.300 2.300-1.400-1.400 2.300-2.300zM7.900 17.500l-2.300 2.300-1.400-1.400 2.300-2.300z"/></svg></button>
     <button class="icon" id="openReview" aria-label="Review: this session and earlier ones" title="Review"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h10v2H4z"/></svg></button>
     <button class="icon" id="openSettings" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 13a7.5 7.5 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.6 7.6 0 0 0-1.7-1L15 3.5h-4l-.4 2.5a7.600 7.600 0 0 0-1.700 1l-2.400-1-2 3.400L6.600 11a7.500 7.500 0 0 0 0 2l-2 1.600 2 3.400 2.400-1c.5.400 1.100.700 1.700 1l.4 2.500h4l.4-2.500c.6-.300 1.200-.600 1.700-1l2.400 1 2-3.400zM13 15.500a3.500 3.500 0 1 1 0-7 3.500 3.500 0 0 1 0 7z"/></svg></button>
   </header>

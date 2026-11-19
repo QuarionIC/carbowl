@@ -620,7 +620,9 @@ test('assistant: cutting it short tells it so at once, so a reply still being wr
   const assistant = { available: () => true, ask: ({ say, signal }) => new Promise(resolve => { signalSeen = !!signal && !signal.aborted; say('A first sentence of a long answer.'); signal.addEventListener('abort', () => { cut = true; resolve({}); }); }) };
   const w = makeWorld({ questions: [LONG], assistant, onMode: onceMode('spot', w => setTimeout(() => w.hear('Moderator, tell me everything about Kant.', { dur: 0.01 }), 30)) });
   const done = w.run();
-  await sleep(120);
+  // (Waits for the question to reach the assistant rather than a fixed 120 ms: on a busy machine that was sometimes too short.)
+  for (let i = 0; i < 200 && !signalSeen; i++) await sleep(10);
+  await sleep(20);
   assert.equal(signalSeen, true); assert.equal(cut, false); assert.equal(w.game.state, 'assistant');
   w.hear('Thanks.', { dur: 0.3 });
   await done;

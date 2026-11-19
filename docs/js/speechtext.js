@@ -1,5 +1,9 @@
 // Turns QBReader question text into something a speech synthesiser reads well, and splits it into
 // sentence-sized chunks with character offsets so reading progress (and the power mark) can be tracked.
+// (How the cleaned text is then worded for the voice model, "Louis XIV" as "Louis the fourteenth",
+// is a separate matter: reading.js.)
+
+import { soundSimilarity, letters } from './phonetics.js';
 
 const POWER_SENTINEL = '\u0001';
 
@@ -24,25 +28,73 @@ export function decodeEntities (s) {
 
 const DIRECTION_RE = /^(read|reads|emphasi[sz]e|emphasis|pause|slowly|moderator|note to (the )?(moderator|reader)|notes? for (the )?(moderator|reader)|do not read|don't read|pronounced?|pron\.?|rhymes with|sic\b)/i;
 
+// How much an aside in parentheses must sound like the words before it to count as a respelling
+// of them (soundSimilarity, 0 to 1). In 2,859 question texts the respellings this is for scored
+// 0.67 and up, and no other aside in parentheses scored above 0.50.
+const ECHO = 0.62;
+const SMALL_WORDS = new Set(['of', 'the', 'a', 'an', 'and', 'in', 'on', 'for', 'to', 'la', 'le', 'les', 'de', 'du', 'des', 'del', 'della', 'di', 'da', 'van', 'von', 'der', 'den', 'el', 'al']);
+// Words a note consists of when it says how a piece of notation is read ("1 over x", "e to the fourth").
+const READING_WORDS = new Set(('a an and the of to over by minus plus times dot point sub prime bar star sharp flat slash dash squared cubed root hat oh zero one two three four five six seven eight ' +
+  'nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty thirty forty fifty sixty seventy eighty ninety hundred thousand first second third fourth fifth').split(' '));
+
+/** How closely an aside sounds like the words just before it, 0 to 1: a respelling repeats what it follows. */
+export function echoOfBefore (aside, before) {
+  if (letters(aside).length < 3) return 0;
+  const words = String(before).replace(/[^A-Za-zÀ-ɏ0-9' -]+/g, ' ').trim().split(/\s+/).filter(Boolean);
+  let best = 0;
+  for (let n = 1; n <= Math.min(5, words.length); n++) {
+    const score = soundSimilarity(aside, words.slice(-n).join(' ')).score;
+    if (score > best) best = score;
+  }
+  return best;
+}
+
+/** True when a quoted aside spells out how the notation before it is read: ("26-66") after 2666, ("1 over x") after 1/x. */
+function readsWhatIsBefore (aside, before) {
+  const last = String(before).trim().split(/\s+/).pop() || '';
+  const plain = x => x.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (plain(aside) && plain(aside) === plain(last)) return true;
+  if (!/[0-9/^_=+*<>()]/.test(last) && !/^[A-Z]{2,}s?$/.test(last.replace(/[^A-Za-z]/g, ''))) return false;
+  const ws = aside.toLowerCase().split(/[\s-]+/).filter(Boolean);
+  return ws.length <= 8 && ws.every(w => /^[0-9]+$/.test(w) || /^[a-z]$/.test(w) || READING_WORDS.has(w));
+}
+
 /**
  * True when the text inside a pair of brackets or parentheses is a pronunciation guide or a note to the reader.
  * @param {boolean} [bracketed] square brackets: lowercase hyphenated respellings such as [shaw-krun] count too
+ * @param {string} [before] the text that comes before the brackets: an aside that sounds like it is a respelling of it
  */
-export function isReaderNote (inner, bracketed = false) {
+export function isReaderNote (inner, bracketed = false, before = '') {
   let s = String(inner).trim();
   if (!s) return true;
   if (DIRECTION_RE.test(s)) return true;
   const quoted = /^["'].*["']$/.test(s);
   if (quoted) s = s.slice(1, -1).trim();
   if (!s) return true;
-  if (!/^[A-Za-zÀ-ɏ'" \-‐‑.]+$/.test(s)) return false;
+  if (!/^[A-Za-zÀ-ɏ0-9'" \-‐‑.,]+$/.test(s)) return false;
   const words = s.split(/\s+/);
   const hasHyphen = /[-‐‑]/.test(s);
   const capsRun = /[A-Z]{2,}/.test(s);
-  // A short quoted aside is a respelling ("mire", "nine four", "meese van der roh").
-  if (quoted) return words.length <= 6;
-  // Unquoted: hyphenated syllables, usually with the stressed one in capitals (KEER-kuh-gard).
-  return words.length <= 6 && hasHyphen && (capsRun || bracketed);
+  const hasDigit = /[0-9]/.test(s);
+  const hasComma = s.includes(',');
+  // Hyphenated syllables with the stressed one in capitals (KEER-kuh-gard), or lowercase ones in
+  // square brackets [shaw-krun]. A respelled phrase may run on with commas ("LAHNT dair BAIR-guh, LAHNT ahm SHTROH-muh").
+  if (!hasDigit && hasHyphen && (capsRun || bracketed) && words.length <= (hasComma ? 12 : 6)) return true;
+  if (quoted) {
+    if (hasDigit || hasComma) return readsWhatIsBefore(s, before) || (!hasDigit && words.length <= 6 && echoOfBefore(s, before) >= ECHO);
+    if (words.length > 6) return false;
+    // A short quoted aside is a respelling ("mire", "nine four", "meese van der roh"), unless it is
+    // a title or a name in its own right ("La Belle Romaine"), which does not sound like what it follows.
+    const titled = words.length >= 2 && !hasHyphen && /^[A-Z]/.test(words[0]) && words.every(w => /^[A-Z][a-z']+$/.test(w) || SMALL_WORDS.has(w));
+    return !titled || echoOfBefore(s, before) >= ECHO;
+  }
+  // In parentheses, unquoted and not in the classic form: a respelling only if it sounds like the
+  // words it follows ("Peter Pears (peers)", "snRNPs (snurps)", "Tay Ninh (TYE nun)"). Not so in
+  // square brackets, where a stand-in for the answer can chance to sound like them ("The Will to [do this]").
+  // Nor for a plain name in capitals and small letters, which is more likely another name for the
+  // same thing ("Calcutta (Kolkata)") than a way of saying it.
+  const named = words.every(w => /^[A-Z][a-z']+$/.test(w));
+  return !bracketed && !named && !hasDigit && !hasComma && !/\./.test(s) && words.length <= 4 && echoOfBefore(s, before) >= ECHO;
 }
 
 const GREEK = { α: 'alpha', β: 'beta', γ: 'gamma', δ: 'delta', ε: 'epsilon', ζ: 'zeta', η: 'eta', θ: 'theta', ι: 'iota', κ: 'kappa', λ: 'lambda', μ: 'mu', ν: 'nu', ξ: 'xi', π: 'pi', ρ: 'rho', σ: 'sigma', ς: 'sigma', τ: 'tau', υ: 'upsilon', φ: 'phi', χ: 'chi', ψ: 'psi', ω: 'omega', Γ: 'gamma', Δ: 'delta', Θ: 'theta', Λ: 'lambda', Ξ: 'xi', Π: 'pi', Σ: 'sigma', Φ: 'phi', Ψ: 'psi', Ω: 'omega' };
@@ -67,7 +119,9 @@ export function notationForSpeech (t) {
   t = t.replace(/\b([fghFGPT])\(([a-z](?:, ?[a-z])*)\)/g, (m, f, args) => `${f} of ${args.replace(/, ?/g, ' and ')}`);
   // Identifiers written with underscores are read as their words.
   t = t.replace(/([A-Za-z0-9])_(?=[A-Za-z0-9])/g, '$1 ');
-  t = t.replace(/\b(\d)\/(\d)\b(?![/\d])/g, m => SIMPLE_FRACTIONS[m] || m);
+  // (Not before "time": "3/4 time" is a time signature, said "three four".)
+  t = t.replace(/\b(\d)\/(\d)\b(?![/\d]|[- ]time\b)/g, m => SIMPLE_FRACTIONS[m] || m);
+  t = t.replace(/\b(\d+)\/([a-z])\b(?![/\w])/g, '$1 over $2');
   // Operators between terms. A "+" inside a name was handled above; "=" has no other use in prose.
   t = t.replace(/([A-Za-z0-9)])\s*\+\s*(?=[A-Za-z0-9(])/g, '$1 plus ');
   t = t.replace(/\s*=\s*/g, ' equals ');
@@ -85,18 +139,25 @@ export function notationForSpeech (t) {
 export function cleanForSpeech (raw) {
   // Tags only: a bare "<" in "x < y" is not the start of one.
   let t = decodeEntities(String(raw == null ? '' : raw).replace(/<\/?[A-Za-z][^<>]*>/g, ''));
-  t = t.replace(/[“”„‟″«»]/g, '"').replace(/[‘’‚‛′]/g, "'");
+  t = t.replace(/[“”„‟″«»]/g, '"').replace(/[‘’‚‛′ʼʻʹʽʾʿ´]/g, "'");
   t = t.replace(/[  -   　]/g, ' ').replace(/[​-‍﻿]/g, '');
-  // Power marks: "(*)" is the standard one; "(+)" marks a superpower in a few sets.
+  // Power marks: "(*)" is the standard one (a few questions print "(**)"); "(+)", "($)" and the
+  // like mark other point values in some sets and are never read.
   let seenPower = false;
-  t = t.replace(/\(\s*\*\s*\)/g, () => { if (seenPower) return ' '; seenPower = true; return ` ${POWER_SENTINEL} `; });
-  t = t.replace(/\(\s*\+\s*\)/g, ' ');
+  t = t.replace(/\(\s*\*{1,3}\s*\)/g, () => { if (seenPower) return ' '; seenPower = true; return ` ${POWER_SENTINEL} `; });
+  t = t.replace(/\(\s*[+$#^~§†‡]{1,3}\s*\)/g, ' ');
   // Bonus part value markers such as "[10]", "[10e]", "[10m]", "[h]".
   t = t.replace(/^\s*\[\s*(?:\d{1,2}\s*[emh]?|[emh])\s*\]\s*/i, '');
-  // Pronunciation guides and notes to the reader.
-  t = t.replace(/\s*\(([^()]{1,90})\)/g, (m, inner) => isReaderNote(inner) ? '' : m);
+  // Dots printed between syllables to help the reader ("methano•genesis") are not part of the word.
+  t = t.replace(/[•‧∙ᐧ・]/g, '·').replace(/([A-Za-z]{2})·(?=[a-z])/g, '$1').replace(/([A-Za-z])·(?=[a-z]{2})/g, '$1');
+  // Pronunciation guides and notes to the reader; some sets put them in double square brackets.
+  t = t.replace(/\[\[\s*([^\[\]]{1,160}?)\s*\]\]/g, '[$1]');
+  // (Where a note stood between two words with no space after it, the words are kept apart.)
+  const gone = (m, at, all) => /[A-Za-z0-9]/.test(all[at + m.length] || '') && (/^\s/.test(m) || /[A-Za-z0-9]/.test(all[at - 1] || '')) ? ' ' : '';
+  // (Only an aside that stands apart can be a respelling of the words before it: in "O(E log V)" the bracket belongs to the O.)
+  t = t.replace(/\s*\(([^()]{1,90})\)/g, (m, inner, at, all) => isReaderNote(inner, false, /^\s/.test(m) ? all.slice(0, at) : '') ? gone(m, at, all) : m);
   // Kept brackets are editorial insertions inside quotations: "restor[ing]" joins, "[this position]" stands alone.
-  t = t.replace(/(\s*)\[([^\[\]]{1,160})\]/g, (m, space, inner) => isReaderNote(inner, true) ? '' : (space ? ' ' : '') + inner.trim());
+  t = t.replace(/(\s*)\[([^\[\]]{1,160})\]/g, (m, space, inner, at, all) => isReaderNote(inner, true, all.slice(0, at)) ? gone(m, at, all) : (space ? ' ' : '') + inner.trim());
   // Shouted asides ("NOTE TO PLAYERS: THREE ANSWERS REQUIRED") are read as words, not spelled out.
   t = t.replace(/\b[A-Z]{2,}(?:[ :,]+[A-Z]{2,}){2,}\b/g, m => m[0] + m.slice(1).toLowerCase());
   // Old-style abbreviations.
@@ -110,7 +171,8 @@ export function cleanForSpeech (raw) {
   t = t.replace(/\s*&\s*/g, ' and ');
   t = notationForSpeech(t);
   // Whitespace and punctuation tidy-up.
-  t = t.replace(/\s+/g, ' ').replace(/ ([,.;:!?])/g, '$1').replace(/,(\s*,)+/g, ',').replace(/\( /g, '(').replace(/ \)/g, ')').trim();
+  // (A full stop that begins a number, "a .300 average", keeps the space before it.)
+  t = t.replace(/\s+/g, ' ').replace(/ ([,;:!?]|\.(?!\d))/g, '$1').replace(/,(\s*,)+/g, ',').replace(/\( /g, '(').replace(/ \)/g, ')').trim();
   let powerOffset = t.indexOf(POWER_SENTINEL);
   if (powerOffset >= 0) {
     const before = t.slice(0, powerOffset).replace(/\s+$/, '');

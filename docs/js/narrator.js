@@ -3,6 +3,7 @@
 // know where a buzz landed, and to resume after an interruption).
 
 import { sleep } from './clock.js';
+import { speakable, alignment, placeInWritten, placeInSaid } from './reading.js';
 
 export class Narrator {
   /**
@@ -67,13 +68,16 @@ export class Narrator {
     return this.late.length;
   }
 
-  /** Starts (or reuses) synthesis of a piece of text. */
+  /**
+   * Starts (or reuses) synthesis of a piece of text. The text is the one shown on screen; the
+   * voice model is handed it as it is said ("Louis XIV" as "Louis the fourteenth": reading.js).
+   */
   synth (text, { priority = 5, group = '', pin = false, voice, kind } = {}) {
     const v = voice || this._voice(kind);
     const key = this._key(text, v);
     let p = this.cache.get(key);
     if (!p) {
-      const job = this.tts.speak(text, { ...v, priority, group });
+      const job = this.tts.speak(speakable(text) || text, { ...v, priority, group });
       p = job.promise.then(a => { if (!a.samples.length) throw new Error('empty audio'); return a; });
       p.catch(() => { if (this.cache.get(key) === p) this.cache.delete(key); });
       this.cache.set(key, p);
@@ -193,11 +197,40 @@ export class Reading {
     this.underruns = 0;
     this.index = 0;
     this.startOffset = from;
+    this.said = new Map();    // chunk index -> { length, pairs } where the spoken form differs from the text shown
     this._wake = null;
     this.done = this._run().catch(e => { this.n.log('reader error: ' + (e && e.message)); this.state = 'stopped'; return 'stopped'; });
     // Progress on screen. Only the display depends on it, so the page's own (throttled when hidden) timer will do.
     this._ticker = setInterval(() => { if (this.onProgress && this.state === 'reading') this.onProgress(this.position()); }, 120);
     this.done.then(() => clearInterval(this._ticker));
+  }
+
+  /**
+   * How chunk i's spoken form lines up with its text, or null when they are the same. Time in the
+   * audio runs with the spoken form ("one thousand five hundred fourteen" takes two seconds where
+   * "1,514" is five characters), so places in the text are found through it.
+   */
+  _said (i) {
+    let m = this.said.get(i);
+    if (m === undefined) {
+      const text = this.chunks[i].text; const said = speakable(text) || text;
+      m = said === text ? null : { length: said.length, pairs: alignment(text, said) };
+      this.said.set(i, m);
+    }
+    return m;
+  }
+
+  /** The share of chunk i's audio that lies before a character offset into its text, 0 to 1. */
+  _audioShare (i, chars) {
+    const c = this.chunks[i]; const m = this._said(i);
+    const share = m ? placeInSaid(m.pairs, chars) / Math.max(1, m.length) : chars / Math.max(1, c.end - c.start);
+    return Math.min(1, Math.max(0, share));
+  }
+
+  /** The character offset into chunk i's text that goes with a share of its audio. */
+  _textAt (i, share) {
+    const c = this.chunks[i]; const m = this._said(i);
+    return m ? placeInWritten(m.pairs, share * m.length) : (c.end - c.start) * share;
   }
 
   _queueAhead (i) {
@@ -210,7 +243,7 @@ export class Reading {
     if (this.startOffset > 0) {
       i = chunks.findIndex(c => c.end > this.startOffset); if (i < 0) return this._finish('finished');
     }
-    let fraction = this.startOffset > chunks[i]?.start ? (this.startOffset - chunks[i].start) / Math.max(1, chunks[i].end - chunks[i].start) : 0;
+    let fraction = this.startOffset > chunks[i]?.start ? this._audioShare(i, this.startOffset - chunks[i].start) : 0;
     let nextStart = 0;
     while (i < chunks.length) {
       if (this.state === 'stopped') return 'stopped';
@@ -257,7 +290,7 @@ export class Reading {
     const c = this.chunks[last.i];
     const sec = Math.min(last.bufferDur, last.offset + Math.max(0, t - last.startAt));
     const stoppedEarly = last.stoppedAt !== undefined ? Math.min(sec, last.stoppedAt) : sec;
-    return Math.round(c.start + (c.end - c.start) * Math.min(1, stoppedEarly / Math.max(0.05, last.bufferDur)));
+    return Math.round(c.start + this._textAt(last.i, Math.min(1, stoppedEarly / Math.max(0.05, last.bufferDur))));
   }
 
   position () { return this.state === 'finished' ? (this.chunks.length ? this.chunks[this.chunks.length - 1].end : 0) : this.positionAt(); }

@@ -57,8 +57,9 @@ function makeSupertonic (Module) {
   return createOfflineTts(Module, { offlineTtsModelConfig: { offlineTtsSupertonicModelConfig: { durationPredictor: '/tts/duration_predictor.int8.onnx', textEncoder: '/tts/text_encoder.int8.onnx', vectorEstimator: '/tts/vector_estimator.int8.onnx', vocoder: '/tts/vocoder.int8.onnx', ttsJson: '/tts/tts.json', unicodeIndexer: '/tts/unicode_indexer.bin', voiceStyle: '/tts/voice.bin' }, numThreads: 1, debug: 0, provider: 'cpu' }, maxNumSentences: 1 });
 }
 
-function speak (tts, text, { sid = 0, speed = 1, steps = 5 } = {}) {
-  return tts.generateWithConfig(text, { sid, speed, numSteps: steps, extra: { lang: 'en' } });
+/** @param {number} [o.seed] a fixed seed gives the same audio for the same text every time (the runtime's own 'seed' option) */
+function speak (tts, text, { sid = 0, speed = 1, steps = 5, seed } = {}) {
+  return tts.generateWithConfig(text, { sid, speed, numSteps: steps, extra: Number.isInteger(seed) ? { lang: 'en', seed } : { lang: 'en' } });
 }
 
 const KWS_DIR = path.join(DL, 'kws-gigaspeech', 'sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01');

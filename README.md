@@ -46,6 +46,10 @@ fetches it as a complete, checksum-verified set, and reloads into it at a moment
 going on: never during a quiz. Settings > Troubleshooting > "Check for updates" does it on demand.
 A page showing no number at all is older than 0.3.1 and has to be reloaded by hand once.
 
+**Light or dark.** The page follows the device until the sun or moon button beside the title is
+used; after that it keeps the look that was chosen, on that device. Settings > Feedback >
+Appearance > "Match this device" goes back to following.
+
 **Review.** Every question heard is kept on the device, with what you said and whether it was
 right (the list icon at the top). Opening "Question" under an entry shows it as its packet printed
 it: the set and packet, the question's number, the text with pronunciation guides and the power in
@@ -71,7 +75,8 @@ times the chosen one with your key. Without a key everything else works as befor
 | Part | What it does |
 |---|---|
 | `docs/js/qb.js` | QBReader categories and difficulties, query building, buffered question feed |
-| `docs/js/speechtext.js` | Cleans question text for speech (pronunciation guides, power marks), splits into sentences |
+| `docs/js/speechtext.js` | Cleans question text for showing and reading (pronunciation guides, power marks, notes to the reader), splits into sentences |
+| `docs/js/reading.js` | Words a sentence for the voice: what is shown as "Louis XIV", "No. 14", "1,514 miles" is said as "Louis the fourteenth", "Number 14", "one thousand five hundred fourteen miles" |
 | `docs/js/workers/tts-worker.js` | Speech synthesis (Supertonic voice on the sherpa-onnx WebAssembly runtime) |
 | `docs/js/workers/listen-worker.js` | Voice-activity detection (Silero) and recognition (Moonshine) on the microphone stream |
 | `docs/js/workers/capture-worklet.js` | Microphone capture, resampled to 16 kHz on the audio thread |
@@ -98,6 +103,19 @@ being read, and what lets the context keep running in the background (WebKit bug
 browsers it goes straight to the context's destination (Settings > Car > Sound output chooses). The
 audio engine never waits on `resume()` (it may not settle while interrupted); a once-a-second
 watchdog nudges, re-opens or rebuilds whatever has stopped.
+
+**What the voice is given to say** (since 0.3.6). The voice model reads plain words well and some
+written forms badly: it was heard turning "Louis XIV" into "Louis Catouille", "1,514 miles" into
+"one, five, fourteen miles", "19.9%" into "nineteen, nine percent" and "Sonata No. 14, Op. 27" into
+noise, and halting after every initial of "J. L. Austin". So each sentence is shown as the question
+was written and handed to the voice reworded (`reading.js`): rulers' numbers as "the fourteenth",
+numbered things as "World War two", numbers with separators and decimals in words, a year like
+1905 as "nineteen oh five", "No.", "Op.",
+"Mt.", "St.", "Dr.", "vs.", "Jr." written out, initials without their full stops, letters the model
+has no character for (ð, þ, æ, accents) in ones it has. Only forms that were heard to come out
+wrong, and right when reworded, are touched; about one sentence in twenty is. Notes to the reader
+that used to slip through and be read aloud ("Peter Pears (peers)", "[[all-oh-BRO-gis]]", "($)",
+"methano•genesis") are removed before either. The measurements are below.
 
 **What keeps the voice the same from one sentence to the next** (since 0.3.4):
 
@@ -182,7 +200,8 @@ from a person in a car. They guided the design; they are not a promise.
 ### The voice (2026-11-18)
 
 Scripts: `tools/exp/voice-quality.cjs`, `speed-quality.cjs` and `pace-tune.cjs`. Eighteen
-sentences from real tossups, speaker "Female 1", every comparison on the same sentences. "Misheard"
+sentences from real tossups, speaker 5 (the default: the first of the men's voices, which Settings
+called "Female 1" until 0.3.6), every comparison on the same sentences. "Misheard"
 is the share of words the larger Moonshine recogniser got wrong when played the result: a stand-in
 for clarity, not a listening test. HNR (harmonics-to-noise ratio) and CPP (cepstral peak
 prominence) fall when a voice turns rough or noisy. The laptop was busy with a game throughout, so
@@ -329,6 +348,119 @@ second, and -34, -25 and -17 dB when the peaks are clipped by 3, 6 and 10 dB.
   room); the speakers with a microphone open, or at levels above the app's; any other computer.
   The quiet clips of the control take and one louder clip on the headphone socket were spoiled by
   another program's sound and are left out. Nobody listened: these are measurements.
+
+### What the reader is given to say (2026-11-19)
+
+Scripts: `tools/exp/text-audit.mjs` and `text-diff.mjs` (what the questions hold, and every
+difference the text handling makes to them), `say-probe.cjs`, `initials-probe.cjs`,
+`say-confirm.cjs` with `say-confirm-report.mjs` (the voice saying a sentence, a recogniser
+listening), `clip-edges.cjs`, `noise-floor.cjs`, `voice-facts.cjs`. The sample is the 305 fixture
+questions and 750 more drawn from QBReader across every category: 2,179 question texts and 1,804
+answers, 8,409 pieces to speak. The listener is the larger Moonshine recogniser, not a person. It
+shows whether the words came out; it says nothing about how natural they sounded, and it has
+habits of its own (it writes "Charles II" for a spoken "Charles the second"), which the scoring
+levels out as far as it can. Every comparison from here on uses the runtime's `seed` option: the
+same seed and text give the same audio, sample for sample (checked), so two ways of writing a
+sentence start from the same noise.
+
+**Notes to the reader that were being read aloud.** 22 of the 2,179 texts are now cleaned
+differently, each one read against the original: asides that respell the word before them without
+the usual capitals and hyphens ("Peter Pears (peers)", "snRNPs (snurps)", "Tay Ninh (TYE nun)"),
+guides in double square brackets ("Allobroges [[all-oh-BRO-gis]]" left "[]" behind), quoted guides
+with a comma or a digit in them, the marks "($)" and "(**)", dots between syllables
+("di•iso•propyl•amide"), and words left stuck together where a note had no space after it. One
+aside that used to be dropped as if it were a respelling is kept: a painting's other title. Heard
+before the change: "It was first sung by Peter Pierce Pierce"; a "($)" came out as "ah" and half a
+second of silence.
+
+**Written forms the voice got wrong** (three seeded takes each; what the recogniser heard):
+
+| Written | Heard | Reworded | Heard |
+|---|---|---|---|
+| Louis XIV built Versailles, and Louis XVI was executed | "Louis Catouille … Louis Xt's", "Louis Cartivray … Louis Sixties", "Louis Cartier … Louis Coxie" | Louis the fourteenth … Louis the sixteenth | right, three times |
+| Act III of this play follows Act IV of another | "Act three … Act Vuff", "… active vv", "… Act Vos" | Act three … Act four | both numbers right, three times |
+| World War I ended in 1918 | "World War I ended in nineteen", "World War in nineteen eighteen", "World War ended in nineteen, eighteen" | World War one ended in 1918 | right, three times |
+| iron(III) oxide and copper(II) sulfate | "iron-eag oxide and coppery sulphate", "iron Ai and copper sulphate", "a clear and curry sulphate" | iron three oxide and copper two sulfate | right, three times |
+| It sold 784,000 copies and then 2,500 more | "seven or eighty four thousand … two, five, five hundred"; right once; "… and then to five hundred" | seven hundred eighty-four thousand … two thousand five hundred | right, three times |
+| The constant is 8.314, pi is about 3.14, and it rose 2.5 percent | "eight, three, four, four … three, fourteen … two, five percent", three times | 8 point three one four … 3 point one four … 2 point five percent | right, three times |
+| the Piano Sonata No. 14, Op. 27 No. 2 | "No, fourteenths, five to seven, No, two"; "No, Fourth Tone, Op, Vinty seven"; "No, Hop, twenty seven" | Number 14, Opus 27 Number 2 | "number fourteen, Opus twenty seven, number two", three times |
+| William F. Buckley, Jr. founded this magazine | "Buckley here founded", right once, "Buckley, dear, founded" | William F Buckley Junior | right, three times |
+| The answer is E. M. Forster | "Monsieur Foster", "E. M. S. Foster", "E. Monsieur Foster" | E M Forster | right, three times |
+| self-portraits 'with a red scarf' and 'with a horn' | the first phrase missing once, "and" missing once | the same in double quotes | right, three times |
+
+Two takes each, unseeded: "Wladyslaw IV" was heard as "Lady Slagh Avi" and "Vladislav Gae",
+"Boniface VIII" as "Boniface B." and "Boniface Zurich", "Mt. Fuji" as "metaphogy" and "Mint Fuji",
+"vs. the control" as "viz" and "Vez", "19.9%" as "nineteen, nine percent" both times, "above −35.9
+degrees" without its minus or with a stray letter, and "Guðrun … Þorgerðr" as "Gurun … Bourgeour".
+"José Müller met Beyoncé in São Paulo" was garbled in all three seeded takes with its accents and
+came through but for the first name in two of three without them. The decimals have a known
+cause: the runtime cuts the text at every full stop and joins it again with a space, so the model
+is given "19. 9".
+
+**The confirmation.** Every piece of the sample that `reading.js` rewrites was a candidate (399 of
+8,409, about one in twenty). For each kind of rewrite other than numbers, 14 of them spread over
+the sample (all 8 for the odd letters) were spoken as written and as rewritten with the same two
+seeds; for numbers, all 48 with three seeds. Both transcripts were scored against the intended
+reading. Pieces that are not rewritten reach the voice unchanged and cannot come out differently.
+The figures are for the rules as they ship.
+
+| Kind of rewrite | Sentences | Words not heard, as written | Reworded | Difference per take (standard error) | Takes better / worse / same |
+|---|---|---|---|---|---|
+| Roman numerals | 14 | 16.3% | 10.0% | -7.9 points (1.9) | 18 / 2 / 8 |
+| Years with a nought (1905) | 14 | 15.7% | 10.1% | -6.3 (1.8) | 27 / 9 / 6 |
+| Decimals | 11 | 12.0% | 7.6% | -4.5 (0.9) | 24 / 3 / 6 |
+| Numbers with separators, other than plain round ones | 7 | 7.0% | 3.9% | not worked out: 7 sentences | 6 / 2 / 13 |
+| Titles and abbreviations (Mr., Dr., St., Mt., No., v.) | 14 | 5.9% | 4.5% | -1.9 (0.8) | 9 / 1 / 18 |
+| Initials without their full stops | 14 | 6.3% | 4.5% | -2.1 (1.4) | 11 / 3 / 14 |
+| Single-quoted phrases | 14 | 9.0% | 6.9% | -1.9 (1.1) | 7 / 2 / 19 |
+| Letters and marks outside the model's alphabet | 8 | 25.0% | 20.5% | -2.7 (2.1) | 6 / 3 / 7 |
+| All of them | 96 | 11.6% | 8.0% | -4.0 (0.6) | 108 / 25 / 91 |
+
+Two things changed because of this run. Plain round numbers ("6,000", "20,000", "100,000",
+"2,000,000": one or two digits and then only noughts) were first put in words like the rest; over
+their 15 sentences the voice read them as well as written as in words (6.8% of words not heard
+against 6.9%), and "accounts above 100,000 euros" lost its "above" in two takes of three in words
+and in none as written, so they are left as written. And a percent sign left on a word ("19 point
+nine%") was read as part of it once; it is now written out. The takes that came out worse were
+read one by one. Most are the recogniser's spelling ("Jay Presper Eckert" for "J Presper Eckert",
+"World War Ii" for "World War two") or a slip somewhere else in the sentence, which another seed
+moves elsewhere. Two are at the rewrite itself and remain: "John D MacDonald" was heard without
+its "John" in one take of two (the other take was better than as written), and "the seventeen oh
+one Act" as "the seventeen, a one-active" (as written it came out "seven hundred one Act").
+
+Initials were also tried on 20 names in a fixed sentence, three seeds each, four ways: as written
+the name was heard right in 44 of 60 takes, without the full stops in 47 (take by take: better 8,
+worse 5), as letter names ("Jay El Austin") in 46, run together ("JL Austin") in 40. Without the
+full stops the sentence is 0.38 s shorter (3.33 to 2.95 s): the voice no longer halts after each
+letter. "I. M. Pei" came out wrong in every form and still does.
+
+**Tried and left as written**, because no reworded form was heard better: "etc." (fine as it
+is), "et al." (garbled in all four forms tried), dotted abbreviations (no one way of writing them
+won: "B.C.E." came out best as written, "p.m." as "PM", "A.A.L." wrong in every form), letter
+names for initials, and a comma or full stop added where a long sentence is cut (the pitch at the
+end of a piece does not depend on its last punctuation mark: 18 takes of each ending, differences
+well inside a spread of 3 to 4 semitones).
+
+**Other things found on the way.**
+
+- The ten speakers are five women (speakers 0 to 4, median pitch 174 to 239 Hz) and five men (5 to
+  9, 90 to 122 Hz). Settings had the names the other way round: the default voice, listed as
+  "Female 1", has always been the first of the men's. The names are now right; the voices are the
+  same.
+- What trimming removes from the ends of a clip is not speech. Over 80 sentences the loudest 5 ms
+  cut from a start was 22.7 dB under the level of the speech and typically 32 dB under it, which
+  is the level of the model's own background: a steady low sound 30 to 36 dB under the voice
+  before the first word (38 to 42 dB under it after the last), almost all of it between 63 and
+  250 Hz. It is there at every quality setting (2, 3, 5, 8, 12, 16 and 24 steps) and for every
+  speaker; from 500 Hz up the background is 55 dB or more under the voice. Nothing was changed.
+- In 561 takes two lost more than a quarter of a second of speech at an end (a first word that
+  never sounded); too rare, and too little of what goes wrong, to build a retry on.
+
+Not verified: none of this was heard by a person, on any device. The recogniser cannot tell
+"Charles two" from "Charles the second" in what it writes, so the gain from saying a ruler's
+number as an ordinal rests on that being how it is read, not on a measurement. The lists behind the
+rules (rulers' names, numbered things) are finite: a name they do not know gets the plain number,
+which is how "II" and "III" were read before.
 
 ### The assistant
 

@@ -54,6 +54,8 @@ const fine = r => {
   if (r.kind !== 'numbers') return r.kind;
   if (/\b1[1-9]0[1-9]\b/.test(r.written) && !/\d[.,]\d/.test(r.written)) return 'numbers: year';
   if (/\d\.\d/.test(r.written)) return 'numbers: decimal';
+  // With --current only numbers that are still put in words are left: one kind.
+  if (process.argv.includes('--current')) return 'numbers: separators';
   if (/\b\d{1,3}(,000)+\b/.test(r.written) && !/\b\d{1,3},(?!000)\d{3}\b/.test(r.written)) return 'numbers: round';
   return 'numbers: other';
 };

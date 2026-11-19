@@ -218,7 +218,9 @@ Quality setting, at 1.3×:
 
 Sentence by sentence, quality 2 is measurably rougher than 5 (HNR lower by 0.38 dB, standard error
 0.14; CPP by 0.27 dB, standard error 0.12). Between 3, 5 and 8 these instruments find no difference
-larger than their own noise; whatever an ear hears there, they do not show it.
+larger than their own noise; whatever an ear hears there, they do not show it. (Measured again on
+19 November with the starting noise held fixed, on 78 sentences: they do differ, a little. See
+"The quality setting, measured again with seeds" below.)
 
 Reading speed, at quality 5. "The model's own" is the model asked for that pace directly, which is
 what every version up to 0.3.3 did at every speed; "compressed" is the model speaking at 1.5× and
@@ -377,7 +379,7 @@ second of silence.
 
 | Written | Heard | Reworded | Heard |
 |---|---|---|---|
-| Louis XIV built Versailles, and Louis XVI was executed | "Louis Catouille … Louis Xt's", "Louis Cartivray … Louis Sixties", "Louis Cartier … Louis Coxie" | Louis the fourteenth … Louis the sixteenth | right, three times |
+| Louis XIV built Versailles, and Louis XVI was executed | "Louis Catouille … Louis Xt's", "Louis Cartivray … Louis Sixties", "Louis Cartier … Louis Coxie" | Louis the fourteenth … Louis the sixteenth | both numbers right, three times |
 | Act III of this play follows Act IV of another | "Act three … Act Vuff", "… active vv", "… Act Vos" | Act three … Act four | both numbers right, three times |
 | World War I ended in 1918 | "World War I ended in nineteen", "World War in nineteen eighteen", "World War ended in nineteen, eighteen" | World War one ended in 1918 | right, three times |
 | iron(III) oxide and copper(II) sulfate | "iron-eag oxide and coppery sulphate", "iron Ai and copper sulphate", "a clear and curry sulphate" | iron three oxide and copper two sulfate | right, three times |
@@ -409,7 +411,7 @@ The figures are for the rules as they ship.
 | Roman numerals | 14 | 16.3% | 10.0% | -7.9 points (1.9) | 18 / 2 / 8 |
 | Years with a nought (1905) | 14 | 15.7% | 10.1% | -6.3 (1.8) | 27 / 9 / 6 |
 | Decimals | 11 | 12.0% | 7.6% | -4.5 (0.9) | 24 / 3 / 6 |
-| Numbers with separators, other than plain round ones | 7 | 7.0% | 3.9% | not worked out: 7 sentences | 6 / 2 / 13 |
+| Numbers with separators, other than plain round ones | 7 | 7.0% | 3.9% | -2.5 (1.4) | 6 / 2 / 13 |
 | Titles and abbreviations (Mr., Dr., St., Mt., No., v.) | 14 | 5.9% | 4.5% | -1.9 (0.8) | 9 / 1 / 18 |
 | Initials without their full stops | 14 | 6.3% | 4.5% | -2.1 (1.4) | 11 / 3 / 14 |
 | Single-quoted phrases | 14 | 9.0% | 6.9% | -1.9 (1.1) | 7 / 2 / 19 |
@@ -441,8 +443,30 @@ names for initials, and a comma or full stop added where a long sentence is cut 
 end of a piece does not depend on its last punctuation mark: 18 takes of each ending, differences
 well inside a spread of 3 to 4 semitones).
 
+**The quality setting, measured again with seeds** (`steps-paired.cjs`, `steps-paired-report.mjs`):
+78 sentences, two seeds, the same text and the same starting noise at each setting, 3,224 words.
+
+| Setting (steps) | Words not heard | Against Standard, per take (standard error) | Takes better / worse / same | HNR | CPP | Time to make, against Standard |
+|---|---|---|---|---|---|---|
+| Faster (3) | 7.6% | +0.74 points (0.27) | 9 / 24 / 123 | 7.73 dB (-0.10, s.e. 0.02) | 20.26 dB (-0.07, s.e. 0.01) | 0.78 |
+| Standard (5) | 6.8% | | | 7.82 dB | 20.33 dB | 1 |
+| Best (8) | 6.3% | -0.41 (0.22) | 19 / 10 / 127 | 7.86 dB (+0.03, s.e. 0.01) | 20.36 dB (+0.03, s.e. 0.01) | 1.37 |
+| 12 (not offered) | 6.2% | -0.49 (0.21) | 24 / 9 / 123 | 7.89 dB (+0.07, s.e. 0.01) | 20.36 dB (+0.03, s.e. 0.01) | 1.86 |
+
+With the starting noise held fixed the settings can be told apart, which the unseeded comparison
+of 18 November could not do on 18 sentences: Faster is heard worse than Standard, Best a little
+better, and the two roughness measures move the same way by a few hundredths of a decibel. Twelve
+steps add next to nothing over eight. The default stays at Standard: the gain is small, and a
+device that cannot keep up at Best starts sentences late, which costs more than Best gives. On a
+computer that makes Standard speech in a quarter of its length, Best is the better setting.
+
 **Other things found on the way.**
 
+- Only "Mr.", "Mrs.", "Ms.", "Dr.", "St.", "Mt.", "No.", "Op.", "vs.", "v." and "Jr." were heard
+  both ways. The rest of that family that `reading.js` writes out ("Prof.", "Gen.", "Col.", "Lt.",
+  "Sgt.", "Capt.", "Rev.", "Gov.", "Sen.", "Rep.", "Pres.", "Ft.", "Vol.", "Sr.", "Ph.D.") was not
+  among the sentences tested, apart from "Ph.D.", which came out as "fagerty" three times as
+  written and right twice in three as "PhD".
 - The ten speakers are five women (speakers 0 to 4, median pitch 174 to 239 Hz) and five men (5 to
   9, 90 to 122 Hz). Settings had the names the other way round: the default voice, listed as
   "Female 1", has always been the first of the men's. The names are now right; the voices are the
@@ -453,8 +477,8 @@ well inside a spread of 3 to 4 semitones).
   before the first word (38 to 42 dB under it after the last), almost all of it between 63 and
   250 Hz. It is there at every quality setting (2, 3, 5, 8, 12, 16 and 24 steps) and for every
   speaker; from 500 Hz up the background is 55 dB or more under the voice. Nothing was changed.
-- In 561 takes two lost more than a quarter of a second of speech at an end (a first word that
-  never sounded); too rare, and too little of what goes wrong, to build a retry on.
+- In 561 takes two lost more than a quarter of a second of speech at an end (in one, a first word
+  that never sounded); too rare, and too little of what goes wrong, to build a retry on.
 
 Not verified: none of this was heard by a person, on any device. The recogniser cannot tell
 "Charles two" from "Charles the second" in what it writes, so the gain from saying a ruler's

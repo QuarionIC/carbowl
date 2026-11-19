@@ -1,0 +1,58 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Carbowl lab: the 0.3.3 reader getting ready in a page that is not on show</title>
+<body style="font:14px/1.4 system-ui;margin:16px">
+<p>Runs version 0.3.3's own reader and speech code through what it did as soon as a page had loaded (making its fixed phrases), and reports the voice quality it chose for each. Nothing is played.</p>
+<pre id="out">starting</pre>
+<script type="module">
+// Served by tools/exp/lab-server.mjs --old <0.3.3's docs> at /__lab/old-rule.html. Version 0.3.3
+// lowered the voice quality for the rest of a session once speech at the current quality had taken
+// more than 0.9 of its own length to make (narrator.js, _voice). It made its fixed phrases right
+// after loading, before anyone had tapped anything. What did that rule do when the page was not
+// on show while it got ready?
+import { loadManifest, downloadModels, TtsClient } from '/__old/js/speech.js';
+import { Narrator } from '/__old/js/narrator.js';
+import { PHRASES } from '/__old/js/game.js';
+import { sleep } from '/js/clock.js';
+
+const BASE = location.origin + '/';
+const params = new URLSearchParams(location.search);
+const RUN = params.get('run') || String(Date.now());
+const out = document.getElementById('out');
+const say = s => { out.textContent += '\n' + s; };
+const report = o => fetch('/__lab/report', { method: 'POST', body: JSON.stringify({ at: new Date().toISOString(), run: RUN, visibility: document.visibilityState, ...o }) }).catch(() => {});
+
+(async () => {
+  try {
+    const manifest = await loadManifest(BASE);
+    const files = [];
+    for (const name of ['runtime', 'tts-supertonic']) for (const f of manifest.bundles[name].files) { if (f.parts) files.push(...f.parts); else files.push({ path: f.path, size: f.size }); }
+    await downloadModels(BASE, files, {});
+    const phrases = Object.values(PHRASES).filter(p => typeof p === 'string');
+    for (const scene of (params.get('scenes') || 'nothing else open,a microphone open,nothing else open,a microphone open').split(',')) {
+      let mic = null;
+      if (scene === 'a microphone open') mic = await navigator.mediaDevices.getUserMedia({ audio: true });
+      await sleep(8000);
+      const logs = [];
+      const tts = new TtsClient({ base: BASE, log: () => {} });
+      await tts.init({ manifest, voice: 'supertonic' });
+      // As app.js made it in 0.3.3: the settings' voice (speaker 5, 1.3x, quality 5).
+      const narrator = new Narrator({ tts, audio: {}, voice: () => ({ sid: 5, speed: 1.3, steps: 5 }), phraseCap: () => null, log: m => logs.push(String(m)) });
+      const steps = []; let gen = 0; let audio = 0;
+      for (const text of phrases) {
+        const v = narrator._voice('phrase');
+        steps.push(v.steps);
+        const clip = await tts.speak(text, v).promise;
+        gen += clip.genMs; audio += clip.audioMs;
+      }
+      const row = { event: 'old-rule', scene, phrases: phrases.length, steps: steps.join(''), endedAt: narrator._voice('phrase').steps, factor: +(gen / audio).toFixed(3), audioSec: +(audio / 1000).toFixed(1), log: logs };
+      say(`${document.visibilityState.padEnd(8)} ${scene.padEnd(20)} quality per phrase ${row.steps}, then ${row.endedAt}; made in ${row.factor} of real time; ${logs.join(' | ')}`);
+      await report(row);
+      tts.terminate();
+      if (mic) for (const t of mic.getTracks()) t.stop();
+    }
+    await report({ event: 'done' });
+    say('done');
+  } catch (e) { say('FAILED ' + (e && e.stack || e)); await report({ event: 'failed', error: String(e && e.stack || e) }); }
+})();
+</script>

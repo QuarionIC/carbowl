@@ -1,0 +1,75 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Carbowl lab: how fast speech is made in a page that is not on show</title>
+<body style="font:14px/1.4 system-ui;margin:16px">
+<p>Measures how long the reader's voice takes to make sentences in this page, under several kinds of sound output, and reports to the lab server. Nothing audible is played.</p>
+<pre id="out">starting</pre>
+<script type="module">
+// Served by tools/exp/lab-server.mjs at /__lab/bg-speed.html?cycles=2. The question: a browser may
+// slow a page that is not on show, unless it counts the page as playing sound or using a
+// microphone. Which of those does the app's own keep-awake signal buy it?
+import { loadManifest, downloadModels, TtsClient } from '/js/speech.js';
+import { sleep } from '/js/clock.js';
+import { keepAwake } from '/js/audio.js';
+
+const BASE = location.origin + '/';
+const params = new URLSearchParams(location.search);
+const out = document.getElementById('out');
+const say = s => { out.textContent += '\n' + s; };
+const report = o => fetch('/__lab/report', { method: 'POST', body: JSON.stringify({ at: new Date().toISOString(), run: RUN, visibility: document.visibilityState, focus: document.hasFocus(), ...o }) }).catch(() => {});
+const RUN = params.get('run') || String(Date.now());
+const SENTENCES = [
+  'This book accuses both Locke and Leibniz of an "Amphiboly of Concepts of Reflection."',
+  'It argues that we have to use "schemata" to perceive things in terms of quantity, quality, relation, and modality.',
+  'This book argues that we cannot know the noumenon, which consists of things in themselves.'
+];
+
+let ctx = null; let source = null; let mic = null;
+async function sound (kind) {
+  if (source) { try { source.stop(); } catch (e) { /* not started */ } source = null; }
+  if (mic) { for (const t of mic.getTracks()) t.stop(); mic = null; }
+  if (kind === 'no sound output at all') { if (ctx) { await ctx.close(); ctx = null; } return; }
+  if (!ctx) ctx = new AudioContext({ latencyHint: 'interactive' });
+  if (ctx.state !== 'running') await ctx.resume();
+  if (kind === 'output open, true silence') return;
+  const rate = ctx.sampleRate; const buf = ctx.createBuffer(1, rate * 2, rate); const d = buf.getChannelData(0);
+  if (kind.startsWith('30 Hz tone at -80 dB')) keepAwake(d, rate, 'direct');
+  else if (kind.startsWith('faint hiss')) keepAwake(d, rate, 'element');
+  else if (kind.startsWith('20 Hz tone at -60 dB')) { const a = Math.SQRT2 * 0.001; for (let i = 0; i < d.length; i++) d[i] = a * Math.sin(2 * Math.PI * 20 * i / rate); }
+  source = ctx.createBufferSource(); source.buffer = buf; source.loop = true; source.connect(ctx.destination); source.start();
+  if (kind.endsWith('microphone open')) mic = await navigator.mediaDevices.getUserMedia({ audio: true });
+}
+
+const KINDS = ['no sound output at all', 'output open, true silence', '30 Hz tone at -80 dB (0.3.5)', 'faint hiss (0.3.4)', '20 Hz tone at -60 dB', '30 Hz tone at -80 dB, microphone open'];
+
+(async () => {
+  try {
+    const manifest = await loadManifest(BASE);
+    const files = [];
+    for (const name of ['runtime', 'tts-supertonic']) for (const f of manifest.bundles[name].files) { if (f.parts) files.push(...f.parts); else files.push({ path: f.path, size: f.size }); }
+    say('fetching the voice (' + Math.round(files.reduce((s, f) => s + f.size, 0) / 1e6) + ' MB, from this computer)');
+    await downloadModels(BASE, files, {});
+    const tts = new TtsClient({ base: BASE, log: () => {} });
+    await tts.init({ manifest, voice: 'supertonic' });
+    await tts.speak('Ready.', { sid: 5, speed: 1.3, steps: 3 }).promise;
+    say('voice ready; visibility ' + document.visibilityState);
+    await report({ event: 'ready', cores: navigator.hardwareConcurrency, agent: navigator.userAgent });
+    const cycles = Number(params.get('cycles') || 2); const settle = Number(params.get('settle') || 8) * 1000;
+    for (let c = 0; c < cycles; c++) {
+      for (const kind of KINDS) {
+        let note = '';
+        try { await sound(kind); } catch (e) { note = String(e && e.message || e); }
+        await sleep(settle);
+        let gen = 0; let audio = 0; const per = [];
+        for (const text of SENTENCES) { const clip = await tts.speak(text, { sid: 5, speed: 1.3, steps: 5 }).promise; gen += clip.genMs; audio += clip.audioMs; per.push(+(clip.genMs / clip.audioMs).toFixed(3)); }
+        const row = { event: 'measure', cycle: c, kind, factor: +(gen / audio).toFixed(3), per, genMs: Math.round(gen), audioMs: Math.round(audio), context: ctx ? ctx.state : 'none', note };
+        say(`${document.visibilityState.padEnd(8)} ${kind.padEnd(40)} ${row.factor} (${per.join(', ')}) ${note}`);
+        await report(row);
+      }
+    }
+    await sound('no sound output at all');
+    await report({ event: 'done' });
+    say('done');
+  } catch (e) { say('FAILED ' + (e && e.stack || e)); await report({ event: 'failed', error: String(e && e.stack || e) }); }
+})();
+</script>

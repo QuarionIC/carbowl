@@ -103,7 +103,9 @@ watchdog nudges, re-opens or rebuilds whatever has stopped.
 
 - The voice quality (the model's number of refinement steps) is the one chosen in Settings, always.
   Earlier versions lowered it for the rest of the session when speech seemed to be generated
-  slowly, which a busy computer could set off. A device that really is too slow now shows as
+  slowly, which a busy computer could set off, and so could a page that was not on screen while it
+  got ready (measured below: that is what made the voice turn rough "for no reason" in 0.3.1 to
+  0.3.3). A device that really is too slow now shows as
   sentences starting late; that is logged, and after three in two minutes the listener is told
   which setting would help. Nothing is changed for them.
 - The model makes 44.1 kHz audio; the sound system runs at the output device's rate. The conversion
@@ -234,6 +236,49 @@ heard than the model's own 2× did.
 - None of this has been heard through a phone or a car. What a phone-call link (CarPlay,
   Bluetooth hands-free) does to the voice after the page hands it over is outside the page's
   reach: a link running at 8 or 16 kHz carries nothing above 4 or 8 kHz, whatever it is given.
+
+### A page that is not on screen (2026-11-19)
+
+Scripts: `tools/exp/lab-server.mjs` (serves the site, the pages under `tools/exp/lab/`, and an
+earlier version's scripts beside them) with `lab/bg-speed.html` and `lab/old-rule.html`, opened in
+Chrome 157 with a throwaway profile and a stand-in microphone, the window minimised. The same
+laptop, otherwise lightly used. The figure is the time speech took to make as a share of its own
+length (quality 5, 1.3×).
+
+| The page is | and has | Two runs |
+|---|---|---|
+| minimised | no sound output at all | 1.55, 1.84 |
+| minimised | sound output open, sending true silence | 1.81, 1.62 |
+| minimised | the keep-awake tone of 0.3.5 (30 Hz, 80 dB below full scale) | 1.71, 1.58 |
+| minimised | the keep-awake hiss of 0.2.0 to 0.3.4 (81 dB below full scale) | 1.87, 1.57 |
+| minimised | a 20 Hz tone 60 dB below full scale (not something the app plays) | 0.22, 0.22 |
+| minimised | the 0.3.5 tone and a microphone open, as during a quiz | 0.23, 0.23 |
+| on screen | nothing, or a microphone open (0.3.3's code, 29 phrases) | 0.26, 0.26, 0.25, 0.25 |
+
+Chrome runs a page that is not on screen at idle priority (Windows showed the page's process in
+the "Idle" priority class) unless the page is playing something louder than Chrome's own threshold
+for "audible" or holds a microphone. Speech is then made six to eight times more slowly: slower than
+it is spoken.
+
+Version 0.3.3's own reader and speech code, put through what it did as soon as a page had loaded
+(making its 29 fixed phrases, about a minute of speech), chose these qualities:
+
+| The page is | and has | Quality, phrase by phrase | It logged |
+|---|---|---|---|
+| on screen | nothing else (twice), a microphone (twice) | 5 for all 29, four times | nothing |
+| minimised | a microphone open (twice) | 5 for all 29, twice | nothing |
+| minimised | nothing else (twice) | 5 for 8 phrases, 3 for 7, 2 for the other 14, both times | "this device generates speech slowly (2.09 of real time at quality 5); lowering voice quality to 3 so the reader keeps up", then "(1.40 of real time at quality 3); lowering voice quality to 2" |
+
+So in 0.3.1 to 0.3.3 a page that got ready while it was not on screen read the whole following
+session at quality 2, the roughest setting, and one that got ready on screen read at quality 5.
+From 0.3.1 a page also reloads itself into a new version when idle, which is often when it is not
+being looked at. The rule was removed in 0.3.4: the quality is the Settings value, whatever the
+speed. During a quiz the microphone is open, so a quiz running behind another window is made at
+full speed; without a microphone it would start each question late.
+
+A minimised window is what was tested. A tab behind another tab is in the same state as far as the
+page can tell (`document.visibilityState` is "hidden"), and is expected to be treated the same; that
+arrangement was not run. Other browsers were not tried.
 
 ### After the page: what a Windows laptop does to the voice (2026-11-19)
 

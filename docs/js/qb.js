@@ -178,6 +178,21 @@ function isUsableBonus (b) {
     b.answers_sanitized.every(a => typeof a === 'string' && a.trim()));
 }
 
+/**
+ * One question by its id, as QBReader holds it now. Review uses it to show a question kept before
+ * its printed text was stored. Resolves to null when QBReader no longer has it (or the id is not
+ * one of QBReader's); rejects when the service cannot be reached.
+ */
+export async function fetchQuestionById (type, id, fetchImpl) {
+  if (!/^[0-9a-f]{24}$/i.test(String(id || ''))) return null;
+  const kind = type === 'bonus' ? 'bonus' : 'tossup';
+  const res = await (fetchImpl || ((...a) => fetch(...a)))(`${API_BASE}/${kind}-by-id?id=${encodeURIComponent(id)}`, { headers: { Accept: 'application/json' } });
+  if (res.status === 404 || res.status === 400) return null;
+  if (!res.ok) throw new Error(`QBReader answered HTTP ${res.status}`);
+  const data = await res.json();
+  return (data && data[kind]) || null;
+}
+
 export class NoQuestionsError extends Error {
   constructor (type) { super(`No ${type}s match the current categories and difficulties.`); this.name = 'NoQuestionsError'; }
 }

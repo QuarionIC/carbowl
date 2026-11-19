@@ -1,6 +1,7 @@
 // Screen and wiring: settings, model download, starting the engines, and showing what the game does.
 
-import { CATEGORY_TREE, DIFFICULTIES, ALL_ALTERNATES, defaultFilters, sanitizeFilters, QuestionFeed, MIN_YEAR, MAX_YEAR, activeCategories, QUICK_TOPICS, topicOn, setTopic } from './qb.js';
+import { CATEGORY_TREE, DIFFICULTIES, ALL_ALTERNATES, defaultFilters, sanitizeFilters, QuestionFeed, MIN_YEAR, MAX_YEAR, activeCategories, QUICK_TOPICS, topicOn, setTopic, fetchQuestionById } from './qb.js';
+import { packetHtml, hasPacketText, applyPacketSource } from './packet.js';
 import { safeAnswerHtml, splitAnswerHtml, escapeHtml, wordsOf, chunkForSpeech } from './speechtext.js';
 import { judgeAnswer } from './judge.js';
 import { soundSimilarity } from './phonetics.js';
@@ -17,7 +18,7 @@ import { Updater } from './update.js';
 import { resample } from './dsp.js';
 
 // Also read by tools/stamp-version.mjs, which writes it into version.json: run that tool after changing it.
-const VERSION = '0.3.4';
+const VERSION = '0.3.5';
 // ?test in the address swaps the microphone for a scripted one, so the whole loop can be exercised without sound hardware.
 const TEST = new URLSearchParams(location.search).has('test');
 const BASE = new URL('.', document.baseURI).href;
@@ -1173,9 +1174,30 @@ function reviewItem (h, where, idx) {
   if (h.type === 'tossup') {
     const right = h.result === 'power' || h.result === 'ten';
     const fixable = h.result && h.result !== 'skipped' && h.buzzOffset !== null && h.buzzOffset !== undefined;
-    return `<li><div class="h-top"><span>Tossup${tag ? ' · ' + tag : ''}</span><span>${escapeHtml(h.result || '')} ${pts(h.points || 0)}</span></div><div class="h-ans">${safeAnswerHtml(h.answer)}</div>${h.heard ? `<div class="h-heard">heard: ${escapeHtml(h.heard)}</div>` : ''}<details class="h-q"><summary>Question</summary>${escapeHtml(h.text || '')}</details>${fixable ? `<div class="rowb"><button type="button" class="btn" data-ov="${idx}" data-in="${where}" data-right="${right ? 0 : 1}">${right ? 'Mark incorrect' : 'Mark correct'}</button></div>` : ''}</li>`;
+    return `<li><div class="h-top"><span>Tossup${tag ? ' · ' + tag : ''}</span><span>${escapeHtml(h.result || '')} ${pts(h.points || 0)}</span></div><div class="h-ans">${safeAnswerHtml(h.answer)}</div>${h.heard ? `<div class="h-heard">heard: ${escapeHtml(h.heard)}</div>` : ''}<details class="h-q" data-q="${idx}" data-in="${where}"><summary>Question</summary>${packetHtml(h)}</details>${fixable ? `<div class="rowb"><button type="button" class="btn" data-ov="${idx}" data-in="${where}" data-right="${right ? 0 : 1}">${right ? 'Mark incorrect' : 'Mark correct'}</button></div>` : ''}</li>`;
   }
-  return `<li><div class="h-top"><span>Bonus${tag ? ' · ' + tag : ''}</span><span>${pts(h.points || 0)}</span></div>${(h.parts || []).map((p, i) => `<div class="h-ans">${safeAnswerHtml(p.answer)}</div><div class="h-heard">${escapeHtml(p.result || 'not reached')}${p.heard ? ` · heard: ${escapeHtml(p.heard)}` : ''}${p.result ? ` · <button type="button" class="btn quiet" style="padding:2px 6px;min-height:0" data-ov="${idx}" data-in="${where}" data-part="${i}" data-right="${p.result === 'correct' ? 0 : 1}">${p.result === 'correct' ? 'mark incorrect' : 'mark correct'}</button>` : ''}</div>`).join('')}<details class="h-q"><summary>Question</summary>${escapeHtml(h.leadin || '')} ${(h.parts || []).map(p => escapeHtml(p.text)).join(' ')}</details></li>`;
+  return `<li><div class="h-top"><span>Bonus${tag ? ' · ' + tag : ''}</span><span>${pts(h.points || 0)}</span></div>${(h.parts || []).map((p, i) => `<div class="h-ans">${safeAnswerHtml(p.answer)}</div><div class="h-heard">${escapeHtml(p.result || 'not reached')}${p.heard ? ` · heard: ${escapeHtml(p.heard)}` : ''}${p.result ? ` · <button type="button" class="btn quiet" style="padding:2px 6px;min-height:0" data-ov="${idx}" data-in="${where}" data-part="${i}" data-right="${p.result === 'correct' ? 0 : 1}">${p.result === 'correct' ? 'mark incorrect' : 'mark correct'}</button>` : ''}</div>`).join('')}<details class="h-q" data-q="${idx}" data-in="${where}"><summary>Question</summary>${packetHtml(h)}</details></li>`;
+}
+
+/** The record a control in the review list belongs to (data-in says which list, the index which entry). */
+const reviewRecord = (where, idx) => { const list = where === 'session' ? sessionHistory : (review.groups[Number(String(where).slice(1))] || {}).items; return list ? list[Number(idx)] : undefined; };
+
+/**
+ * A question kept before 0.3.5 has only the words that were read aloud. The first time it is
+ * opened, the text as its packet printed it is fetched from QBReader by the question's id, kept
+ * with the record, and shown in place of the stand-in. Offline, or if QBReader no longer has the
+ * question, the stand-in stays.
+ */
+async function printedText (details) {
+  const rec = reviewRecord(details.dataset.in, details.dataset.q);
+  if (!rec || hasPacketText(rec) || rec.sourceAsked) return;
+  rec.sourceAsked = true;
+  let got = null;
+  try { got = await fetchQuestionById(rec.type, rec.id); } catch (e) { rec.sourceAsked = false; log(`review: the printed text of ${rec.type} ${rec.id} could not be fetched (${e && e.message ? e.message : e})`); return; }
+  if (!got || !applyPacketSource(rec, got)) { log(`review: QBReader has no printed text for ${rec.type} ${rec.id}`); return; }
+  // The quiz in progress files its own records when they are settled; anything else is filed here.
+  if (!(game && game.current === rec)) historyStore.save(rec, rec.session || sessionId);
+  if (details.isConnected && reviewRecord(details.dataset.in, details.dataset.q) === rec) details.innerHTML = `<summary>Question</summary>${packetHtml(rec)}`;
 }
 
 async function renderReview () {
@@ -1202,6 +1224,7 @@ $('openReview').addEventListener('click', async () => { await renderReview(); $(
 // A session's questions are only laid out when it is opened: a long history would otherwise be slow to show.
 $('reviewBody').addEventListener('toggle', e => {
   const d = e.target;
+  if (d.matches && d.matches('details.h-q') && d.open) { printedText(d); return; }
   if (!d.matches || !d.matches('details.sess') || !d.open) return;
   const g = review.groups[Number(d.dataset.sess)]; const ul = d.querySelector('ul');
   if (g && !ul.childElementCount) ul.innerHTML = g.items.slice().reverse().map((h, k) => reviewItem(h, 's' + d.dataset.sess, g.items.length - 1 - k)).join('');
@@ -1258,7 +1281,8 @@ if (TEST) {
   };
   window.carbowlSelfTest = async function ({ volume = 0.02 } = {}) {
     const R = { steps: [], ok: false, done: false }; window.carbowlSelfTestResult = R;
-    const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+    // Waits use the app's own clock (clock.js), which keeps time in a page that is not on show; the
+    // browser's timers slow to one a second there, or one a minute, and the script would miss its cues.
     const until = async (what, pred, ms) => { const t = performance.now(); while (performance.now() - t < ms) { if (pred()) { R.steps.push(what + ' ok after ' + Math.round(performance.now() - t) + ' ms'); return true; } await sleep(30); } R.steps.push(what + ' TIMED OUT in state ' + app.dataset.state); return false; };
     try {
       await until('engines ready', () => phase === 'ready' || phase === 'running', 60000);
@@ -1318,7 +1342,6 @@ if (TEST) {
   // skip this one please") is turned into an action by the model and carried out.
   window.carbowlAssistantTest = async function ({ volume = 0.02 } = {}) {
     const R = { steps: [], ok: false, done: false }; window.carbowlAssistantTestResult = R;
-    const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
     const until = async (what, pred, ms) => { const t = performance.now(); while (performance.now() - t < ms) { if (pred()) { R.steps.push(what + ' ok after ' + Math.round(performance.now() - t) + ' ms'); return true; } await sleep(30); } R.steps.push(what + ' TIMED OUT in state ' + app.dataset.state); return false; };
     try {
       await until('engines ready', () => phase === 'ready' || phase === 'running', 60000);

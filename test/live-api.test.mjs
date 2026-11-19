@@ -50,3 +50,25 @@ test('live: impossible filters report no questions instead of hanging', { skip: 
   feed.setFilters({ ...defaultFilters(), subs: ['Philosophy'], difficulties: [1], minYear: 2000, maxYear: 2000 });
   await assert.rejects(() => feed.next('tossup', { maxAttempts: 2 }), e => e instanceof NoQuestionsError);
 });
+
+test('live: one question can be fetched again by its id, with the text as its packet printed it', { skip: !live }, async () => {
+  const { fetchQuestionById } = await import('../docs/js/qb.js');
+  const { packetView, applyPacketSource, hasPacketText } = await import('../docs/js/packet.js');
+  const feed = new QuestionFeed({});
+  feed.setFilters(defaultFilters());
+  for (const type of ['tossup', 'bonus']) {
+    const q = await feed.next(type);
+    const again = await fetchQuestionById(type, q._id);
+    assert.equal(again._id, q._id);
+    assert.deepEqual(type === 'tossup' ? again.question : again.parts, type === 'tossup' ? q.question : q.parts);
+    assert.ok(again.set && again.set.name && again.packet && Number.isFinite(again.number), 'it says which set, packet and number it was');
+    // A record kept without the printed text is completed by it.
+    const rec = type === 'tossup'
+      ? { id: q._id, type, text: prepareTossup(q).text, powerOffset: prepareTossup(q).powerOffset, answer: q.answer, result: 'ten', points: 10, buzzOffset: 60, q: { set: { name: q.set.name } } }
+      : { id: q._id, type, leadin: prepareBonus(q).leadin.text, parts: prepareBonus(q).parts.map((p, i) => ({ text: p.text, answer: q.answers[i], result: 'correct', points: 10 })), points: 30, q: { set: { name: q.set.name } } };
+    assert.equal(hasPacketText(rec), false);
+    assert.equal(applyPacketSource(rec, again), true);
+    assert.ok(packetView(rec).html.includes(`<p class="p-q">${again.number}. `));
+  }
+  assert.equal(await fetchQuestionById('tossup', '000000000000000000000000'), null, 'an id QBReader does not have');
+});

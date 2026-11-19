@@ -2,6 +2,8 @@
 // history outgrows localStorage's few megabytes); a plain in-memory store stands in where
 // IndexedDB is missing (private browsing, tests).
 
+import { packetSource, sourceFields } from './packet.js';
+
 const DB_NAME = 'carbowl';
 const STORE = 'history';
 /** A session that was last used this recently is carried on after a reload instead of starting a new one. */
@@ -19,6 +21,10 @@ export function slimRecord (h, session) {
     alt: q.alternate_subcategory || h.alt || '', difficulty: q.difficulty === undefined ? (h.difficulty === undefined ? null : h.difficulty) : q.difficulty
   };
   if (h.overridden) base.overridden = true;
+  // The text as the packet printed it (formatting, pronunciation guides, its number and packet),
+  // so that Review can show the question as it stood on the page and not only as it was read.
+  const src = packetSource(q);
+  if (src) base.src = src;
   if (h.type === 'tossup') {
     return { ...base, text: h.text || '', answer: h.answer || '', answerText: h.answerText || '', heard: h.heard || '', buzzOffset: h.buzzOffset === undefined ? null : h.buzzOffset, powerOffset: h.powerOffset === undefined ? -1 : h.powerOffset };
   }
@@ -27,7 +33,10 @@ export function slimRecord (h, session) {
 
 /** A stored record in the shape the game and the review screen work with. */
 export function expandRecord (r) {
-  return { ...r, parts: r.parts || [], q: { set: { name: r.set || '' }, category: r.cat || '', subcategory: r.sub || '', alternate_subcategory: r.alt || undefined, difficulty: r.difficulty === null ? undefined : r.difficulty } };
+  const src = r.src || null;
+  const set = { name: r.set || '' };
+  if (src && Number.isFinite(src.year)) set.year = src.year;
+  return { ...r, parts: r.parts || [], q: { ...sourceFields(src), set, category: r.cat || '', subcategory: r.sub || '', alternate_subcategory: r.alt || undefined, difficulty: r.difficulty === null ? undefined : r.difficulty } };
 }
 
 const isRecord = r => !!(r && (r.type === 'tossup' || r.type === 'bonus') && r.key);

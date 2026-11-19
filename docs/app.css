@@ -171,11 +171,11 @@ pre.log{font-family:var(--mono);font-size:11px;line-height:1.35;background:var(-
 .tabs button{flex:1;min-height:40px;border-radius:10px;font-size:14.5px;font-weight:500;color:var(--muted)}
 .tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
 .sess{border:1px solid var(--line);border-radius:12px;background:var(--surface);margin-top:8px;overflow:hidden}
-.sess summary{display:flex;flex-direction:column;gap:2px;padding:10px 12px;min-height:48px;list-style:none;cursor:pointer}
-.sess summary::-webkit-details-marker{display:none}
-.sess summary b{font-weight:500}
-.sess summary small{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
-.sess[open] summary{border-bottom:1px solid var(--line)}
+.sess>summary{display:flex;flex-direction:column;gap:2px;padding:10px 12px;min-height:48px;list-style:none;cursor:pointer}
+.sess>summary::-webkit-details-marker{display:none}
+.sess>summary b{font-weight:500}
+.sess>summary small{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.sess[open]>summary{border-bottom:1px solid var(--line)}
 .sess .hist{padding:8px}
 .sess .hist li{background:var(--bg)}
 .hist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
@@ -184,6 +184,23 @@ pre.log{font-family:var(--mono);font-size:11px;line-height:1.35;background:var(-
 .hist .h-ans{font-family:var(--serif);font-size:17px;line-height:1.3;margin-top:2px}
 .hist .h-heard{font-family:var(--mono);font-size:12px;color:var(--muted)}
 .hist .h-q{font-size:13.5px;color:var(--muted);margin-top:6px}
+.hist .h-q summary{cursor:pointer;padding:3px 0}
+/* A question as its packet prints it: a book face at a size close to print, the number, the power
+   in bold up to (*), ANSWER with what must be said bold and underlined, the category in angle
+   brackets. It follows the app's light or dark theme. */
+.packet{font-family:"Times New Roman",Times,"Nimbus Roman","Liberation Serif","Tinos",serif;font-size:16.5px;line-height:1.3;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:14px 16px 13px;margin:6px 0 2px;overflow-wrap:break-word;-webkit-hyphens:none;hyphens:none;letter-spacing:0;text-transform:none}
+.sess .hist li .packet{background:var(--surface)}
+.hist li .packet{background:var(--bg)}
+.packet p{margin:0}
+.packet .p-head{font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:9px}
+.packet .p-ans+.p-q{margin-top:0}
+.packet b,.packet strong{font-weight:700}
+.packet u{text-decoration-thickness:1px;text-underline-offset:2px}
+.packet sub,.packet sup{font-size:.72em;line-height:0}
+.p-buzz{display:inline-block;width:3px;height:1.05em;vertical-align:-.17em;margin:0 3px 0 2px;border-radius:1px;background:var(--accent)}
+.p-buzz.good{background:var(--good)} .p-buzz.bad{background:var(--bad)}
+.p-key{margin:5px 2px 0;font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.p-key .p-buzz{margin:0 7px 0 0}
 .hist .pts{font-weight:500}
 .hist .pts.good{color:var(--good)} .hist .pts.bad{color:var(--bad)}
 .hist .rowb .btn{padding:7px 10px;min-height:36px;font-size:13px}

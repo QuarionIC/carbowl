@@ -46,6 +46,15 @@ fetches it as a complete, checksum-verified set, and reloads into it at a moment
 going on: never during a quiz. Settings > Troubleshooting > "Check for updates" does it on demand.
 A page showing no number at all is older than 0.3.1 and has to be reloaded by hand once.
 
+**Review.** Every question heard is kept on the device, with what you said and whether it was
+right (the list icon at the top). Opening "Question" under an entry shows it as its packet printed
+it: the set and packet, the question's number, the text with pronunciation guides and the power in
+bold up to its (*) mark, the ANSWER line with what must be said in bold and underlined, the
+category in angle brackets; a bonus as its lead-in and "[10]" parts, each with its answer. A small
+mark stands in the text at the word where you buzzed, green for a right answer and red for a wrong
+one. Entries kept before 0.3.5 hold only the words that were read aloud; the first time one is
+opened while online, its printed text is fetched from QBReader by the question's id and kept.
+
 **The assistant.** Open questions are answered by Anthropic's Claude, called straight from the page
 with your own Anthropic API key (Settings > Assistant; make a key at console.anthropic.com). The key
 is kept in the browser's storage on that device, apart from the other settings, is never written to
@@ -75,6 +84,7 @@ times the chosen one with your key. Without a key everything else works as befor
 | `docs/js/assistant.js` | The assistant: what the model is told, the request per model, replies streamed into sentences for the voice, the things it may ask the quiz to do |
 | `docs/js/update.js` | Notices a newer published version (or a half-updated copy), fetches it as a verified set and reloads when idle |
 | `docs/js/history.js` | Everything asked, kept across sessions |
+| `docs/js/packet.js` | A kept question laid out as its packet printed it, and where in the printed text a buzz came |
 | `docs/js/numbers.js` | Spoken numbers ("twenty four") against written ones ("24") when judging |
 | `docs/js/clock.js` | Timers that keep time while the page is in the background |
 | `docs/js/app.js` | Screen, settings, model download, review, the car check |
@@ -106,6 +116,11 @@ watchdog nudges, re-opens or rebuilds whatever has stopped.
 - Volume above 1× is made by pressing the loudest peaks down, not by running over full scale.
 - Up to 1.5× the voice model itself speaks at the reading speed asked for. Above that it speaks at
   1.5× and the result is compressed in time: asked for more itself, the model drops sounds.
+- Between sentences the output is never true silence (a Bluetooth link or a digital output that
+  mutes itself on silence would swallow the start of the next sentence). On computers that is a
+  30 Hz tone 80 dB below full scale (since 0.3.5); through an iPhone's call audio it is a faint
+  hiss, as before. Up to 0.3.4 the hiss was used everywhere, and a laptop's own sound effects were
+  measured turning it up by 16 dB (see below).
 
 ## Developing
 
@@ -219,6 +234,56 @@ heard than the model's own 2× did.
 - None of this has been heard through a phone or a car. What a phone-call link (CarPlay,
   Bluetooth hands-free) does to the voice after the page hands it over is outside the page's
   reach: a link running at 8 or 16 kHz carries nothing above 4 or 8 kHz, whatever it is given.
+
+### After the page: what a Windows laptop does to the voice (2026-11-19)
+
+Scripts: `tools/exp/wasapi.cs` (compiled on the spot by Windows PowerShell; plays a prepared
+programme the way an ordinary program does and records Windows' own copy of what it sends to the
+output, after its software effects and before the hardware), `sound-path.mjs` and `sound-lab.mjs`
+(line each played clip up with what came out and measure the difference), `sound-clarity.cjs` (the
+recogniser, HNR and CPP on the same sentence before and after). One laptop: Realtek sound with
+Dolby, Realtek and intelliGo effects, on which Windows reports "loudness equalizer", "virtual
+surround", "speaker protection" and "noise suppression" as on for everything played. Four
+sentences in the reader's voice at the level the app plays them (spoken parts 19 dB below full
+scale).
+
+| Output, and how it was played | Level, out against in | Peaks above the average, in → out | Samples pinned at full scale | Damage |
+|---|---|---|---|---|
+| Built-in speakers, as any program plays | +9.2 dB | 16.7 → 10.8 dB | 0.10% | -19.0 dB |
+| Built-in speakers, the same 12 dB quieter (one sentence) | +15.9 dB | 17.1 → 16.4 dB | under 0.001% | -22.1 dB |
+| Built-in speakers, the same 24 dB quieter (one sentence) | +24.3 dB | 17.1 → 17.1 dB | none | -26.3 dB |
+| Built-in speakers, asking Windows for no processing (a control; a web page cannot ask) | +5.2 dB | 16.7 → 14.7 dB | 0.001% | -23.4 dB |
+| Headphone socket, as any program plays (two sentences, three takes) | +4.3 to +4.6 dB | 16.8 → 15.4 to 15.6 dB | 0.001% | -28.5 to -28.8 dB |
+
+"Damage" is what is left of the output once a fixed change of tone and a volume that rides up and
+down (in seven bands, 21 ms at a time) have both been allowed for. For scale, the same measure
+reads -37 dB for a fixed change of tone alone, -28 dB when the volume also rides ±4 dB over half a
+second, and -34, -25 and -17 dB when the peaks are clipped by 3, 6 and 10 dB.
+
+- On the built-in speakers Windows turns the voice up by 9 dB and holds its peaks at full scale,
+  6 dB closer to the average than they went in; the quieter the sound, the more it is turned up
+  (24 dB for speech 24 dB quieter), so lowering the app's level changes little. The tone is changed
+  too: +6 to +10 dB from 100 to 200 Hz, -3.5 dB at 800 Hz, +11 to +14 dB from 8 to 12.5 kHz, relative to
+  1 kHz (the last also when no processing is asked for, so that part is the speaker's own tuning).
+  On the headphone socket the voice passes nearly as it is: +4.5 dB, flat within 3 dB above 250 Hz.
+- The same sentences before and after the speakers' processing: 3 and 4 of 64 words misheard, HNR
+  lower by 0.19 dB (standard error 0.06), CPP by 0.42 dB (0.01). For comparison, the fall to
+  quality 2 that 0.3.4 removed cost 0.38 dB of HNR and 0.27 dB of CPP. Headphones: HNR +0.4 dB,
+  CPP unchanged (one sentence at four lower levels).
+- The app's faint keep-awake hiss (white noise 81 dB below full scale) left the speakers' processing
+  at -64.7 dB, 16 dB louder and mostly around 10 kHz, and 16 dB louder at every level tried down
+  to 30 dB lower. A 30 Hz tone at -83 dB left at -69 dB with nothing above -139 dB at 250 Hz, 1,
+  4 or 10 kHz; on the headphone socket the two came out at -76.4 and -77.5 dB. Since 0.3.5 the
+  tone is what computers get.
+- A microphone held open changed nothing in what the headphone socket was sent (none, as a call,
+  plainly: level +4.3, +4.6 and +4.4 dB; damage -28.8, -28.8 and -28.5 dB). The audio engine
+  process used 26 to 42% of one processor core whenever anything played.
+- The sound drivers on this laptop date from 2024. The one sound-related update in the three weeks
+  before was to the intelliGo companion app, on 2 November, before Carbowl existed.
+- What this does not cover: anything after Windows' software (the amplifier, the loudspeakers, the
+  room); the speakers with a microphone open, or at levels above the app's; any other computer.
+  The quiet clips of the control take and one louder clip on the headphone socket were spoiled by
+  another program's sound and are left out. Nobody listened: these are measurements.
 
 ### The assistant
 

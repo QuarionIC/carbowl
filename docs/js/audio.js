@@ -45,6 +45,29 @@ const TONES = {
 
 const describe = e => (e && (e.name ? e.name + ': ' : '') + (e.message || e)) || 'unknown error';
 
+/**
+ * Fills a two-second loop with the signal that plays under everything, so that the output is never
+ * true silence between sentences: a Bluetooth or car link, or a digital output that mutes itself
+ * on silence, would otherwise swallow the start of the next sentence, and an iPhone counts a silent
+ * page as one it may put to sleep. It must never be heard, and what cannot be heard depends on
+ * where the sound goes:
+ *  - 'direct' (computers): a 30 Hz tone, 80 dB below full scale. A computer's own sound effects
+ *    may turn quiet sounds up: on a Windows laptop's speakers the faint hiss used until 0.3.4 was
+ *    measured coming out 16 dB louder, as a steady hiss around 10 kHz. A 30 Hz tone was turned up
+ *    as much, but stays some 30 dB under what an ear can hear that low, and small speakers
+ *    cannot produce it at all; it puts nothing whatever in the range where hiss is heard.
+ *  - 'element' (iPhone, iPad, Safari): the faint hiss as before. A telephone link, which is what a
+ *    car is to an iPhone, carries nothing below about 100 Hz, so the tone would arrive as silence.
+ * Either is still several steps of a 16-bit sample, so it survives the trip to a sound card.
+ */
+export function keepAwake (out, sampleRate, mode) {
+  if (mode === 'direct') {
+    const w = 2 * Math.PI * 30 / sampleRate;
+    for (let i = 0; i < out.length; i++) out[i] = 0.0001 * Math.sin(w * i);
+  } else for (let i = 0; i < out.length; i++) out[i] = (Math.random() * 2 - 1) * 0.00015;
+  return out;
+}
+
 export class AudioEngine extends EventTarget {
   /** @param {{ log?: Function, output?: 'element'|'direct' }} [o] */
   constructor ({ log, output } = {}) {
@@ -181,13 +204,12 @@ export class AudioEngine extends EventTarget {
     return el;
   }
 
-  /** A barely audible noise bed keeps the output (and a Bluetooth or car link) from going to sleep between sentences. */
+  /** Something that is not silence keeps the output awake between sentences: see keepAwake() below. */
   _bed () {
     const ctx = this.ctx;
     const n = Math.round(ctx.sampleRate * 2);
     const buf = ctx.createBuffer(1, n, ctx.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * 0.00015;
+    keepAwake(buf.getChannelData(0), ctx.sampleRate, this.mode);
     const src = ctx.createBufferSource();
     src.buffer = buf; src.loop = true;
     src.connect(this._tail());

@@ -8,7 +8,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 import { Narrator } from '../docs/js/narrator.js';
-import { AudioEngine } from '../docs/js/audio.js';
+import { AudioEngine, keepAwake } from '../docs/js/audio.js';
 import * as dsp from '../docs/js/dsp.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -189,6 +189,51 @@ test('volume above 1x presses peaks instead of clipping them, and leaves the cli
   const quiet = clip.map(v => v * 0.3);
   const q = loud._forOutput(quiet, 48000, 48000);
   assert.equal(q.data, quiet); assert.equal(q.gain, 1.5);
+});
+
+// ---------- what plays under everything, so that the output is never true silence ----------
+
+/** Level of one frequency in a signal, as an amplitude. */
+function toneAt (x, rate, hz) {
+  let re = 0; let im = 0;
+  for (let i = 0; i < x.length; i++) { re += x[i] * Math.cos(2 * Math.PI * hz * i / rate); im += x[i] * Math.sin(2 * Math.PI * hz * i / rate); }
+  return 2 * Math.hypot(re, im) / x.length;
+}
+
+test('on a computer the keep-awake signal is a 30 Hz tone with nothing in the range where hiss is heard', () => {
+  for (const rate of [48000, 44100, 96000]) {
+    const loop = keepAwake(new Float32Array(rate * 2), rate, 'direct');
+    assert.ok(Math.abs(peakOf(loop) - 0.0001) < 2e-6, `peak ${peakOf(loop)}`);
+    assert.ok(Math.abs(toneAt(loop, rate, 30) - 0.0001) < 1e-6, 'all of it is the 30 Hz tone');
+    // What is left when that tone is taken away: nothing, at any audible pitch.
+    const rest = loop.map((v, i) => v - 0.0001 * Math.sin(2 * Math.PI * 30 * i / rate));
+    assert.ok(peakOf(rest) < 1e-9, `everything but the tone: ${peakOf(rest)}`);
+    for (const hz of [200, 1000, 4000, 10000]) assert.ok(toneAt(loop, rate, hz) < 1e-8, `nothing at ${hz} Hz`);
+    // It is played as a loop: the end runs into the beginning without a step (which would click).
+    const step = Math.abs(loop[1] - loop[0]); const seam = Math.abs(loop[0] - (loop[loop.length - 1] + (loop[loop.length - 1] - loop[loop.length - 2])));
+    assert.ok(seam < step * 0.01, 'the loop closes on itself');
+    // Never true silence, even after rounding to 16 bits: no run of zeros longer than a few milliseconds.
+    let run = 0; let longest = 0;
+    for (const v of loop) { if (Math.round(v * 32768) === 0) { run++; longest = Math.max(longest, run); } else run = 0; }
+    assert.ok(longest / rate < 0.004, `longest stretch of 16-bit zeros ${(1000 * longest / rate).toFixed(1)} ms`);
+  }
+});
+
+test('through the call audio the keep-awake signal stays the faint hiss, and the engine picks by how sound leaves', () => {
+  const hiss = keepAwake(new Float32Array(96000), 48000, 'element');
+  assert.ok(peakOf(hiss) <= 0.00015 && peakOf(hiss) > 0.00014);
+  const rms = Math.sqrt(hiss.reduce((s, v) => s + v * v, 0) / hiss.length);
+  assert.ok(Math.abs(db(rms) - db(0.00015 / Math.sqrt(3))) < 0.2, 'evenly spread noise');
+  assert.ok(toneAt(hiss, 48000, 30) < 2e-6, 'not a tone: a telephone link would not carry one that low');
+  for (const [mode, tone] of [['direct', true], ['element', false]]) {
+    const e = engineAt(48000); e.mode = mode;
+    const started = []; e.ctx.createBufferSource = () => ({ buffer: null, loop: false, connect () {}, start () { started.push(this); } });
+    e._bed();
+    assert.equal(started.length, 1); assert.equal(started[0].loop, true);
+    const d = started[0].buffer.getChannelData(0);
+    assert.equal(d.length, 96000);
+    assert.equal(Math.abs(toneAt(d, 48000, 30) - 0.0001) < 1e-6, tone, mode);
+  }
 });
 
 // ---------- the speech worker's finishing step, run as the worker runs it ----------
